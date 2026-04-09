@@ -1,5 +1,14 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## まとめアプリ（組織構造図）
+
+Figma からエクスポートした `OrganizationChart` を **`app/components/OrganizationChart.tsx`** に置き、トップページで表示しています。
+
+- `figma:asset/...` の画像は **SVG 矢印（`FlowArrow`）** に差し替え済み
+- `localStorage` は **SSR 対応**（マウント後に読み込み）
+
+元 ZIP の展開例: `~/Desktop/まとめアプリ/figma-export-src/`
+
 ## Getting Started
 
 First, run the development server:
