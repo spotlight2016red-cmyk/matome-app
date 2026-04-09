@@ -66,7 +66,8 @@ export function OrganizationChart() {
 
   const [storageReady, setStorageReady] = React.useState(false);
 
-  React.useEffect(() => {
+  // 描画前に読み込み、デフォルト表示のフラッシュと「勝手に戻った」ように見える挙動を抑える
+  React.useLayoutEffect(() => {
     try {
       const m = localStorage.getItem("memoItems");
       if (m) setMemoItems(JSON.parse(m));
@@ -159,6 +160,28 @@ export function OrganizationChart() {
     const updated = [...dailyTasks];
     updated[index] = value;
     setDailyTasks(updated);
+  };
+
+  const handleResetPriorityToDefaults = () => {
+    if (
+      typeof window !== "undefined" &&
+      window.confirm(
+        "今日の最優先を初期の3件に戻しますか？\n今の一覧は破棄され、ブラウザに保存されている内容も上書きされます。"
+      )
+    ) {
+      setPriorityTasks(defaultPriorityTasks.map((t) => ({ ...t })));
+    }
+  };
+
+  const handleResetDailyToDefaults = () => {
+    if (
+      typeof window !== "undefined" &&
+      window.confirm(
+        "毎日タスクを初期の3件に戻しますか？\n今の一覧は破棄され、ブラウザに保存されている内容も上書きされます。"
+      )
+    ) {
+      setDailyTasks([...defaultDailyTasks]);
+    }
   };
 
   return (
@@ -583,6 +606,32 @@ export function OrganizationChart() {
                   </div>
                 )}
               </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-gray-300 flex flex-wrap gap-2 justify-end items-center">
+              <span className="text-xs text-gray-500 mr-auto max-sm:w-full">
+                リセットはここからのみ（日替わりなどの自動クリアはしません）
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleResetPriorityToDefaults();
+                }}
+                className="text-xs px-3 py-1.5 rounded border border-red-300 bg-white text-red-700 hover:bg-red-50"
+              >
+                最優先を初期状態に戻す
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleResetDailyToDefaults();
+                }}
+                className="text-xs px-3 py-1.5 rounded border border-blue-300 bg-white text-blue-700 hover:bg-blue-50"
+              >
+                毎日タスクを初期状態に戻す
+              </button>
             </div>
           </div>
           
