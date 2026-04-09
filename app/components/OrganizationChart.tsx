@@ -30,6 +30,41 @@ const defaultPriorityTasks: PriorityTaskItem[] = [
 ];
 const defaultDailyTasks = ["毎日タスク1", "毎日タスク2", "毎日タスク3"];
 
+/** 司令本部：分野ごとの ChatGPT リンク（別URLにしたい項目だけ href を差し替え） */
+const shireibuLinks = [
+  {
+    label: "映画編集",
+    href: "https://chatgpt.com/share/69d83c56-74fc-83a4-a5e4-7cfa6c9e6047",
+  },
+  {
+    label: "映画広報",
+    href: "https://chatgpt.com/g/g-p-691ecfa61b688191aff053276412376b-esientomoto/c/69cf0247-24a8-83aa-8d84-2762c83d6a7c",
+  },
+  {
+    label: "映画撮影",
+    href: "https://chatgpt.com/g/g-p-691ecfa61b688191aff053276412376b-esientomoto/c/69cf0247-24a8-83aa-8d84-2762c83d6a7c",
+  },
+  {
+    label: "映画上映",
+    href: "https://chatgpt.com/g/g-p-691ecfa61b688191aff053276412376b-esientomoto/c/69cf0247-24a8-83aa-8d84-2762c83d6a7c",
+  },
+] as const;
+
+const SHIREIBU_DEFAULT_HREFS: Record<string, string> = Object.fromEntries(
+  shireibuLinks.map((l) => [l.label, l.href])
+);
+
+function isValidHttpUrl(s: string): boolean {
+  const t = s.trim();
+  if (!t) return false;
+  try {
+    const u = new URL(t);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export function OrganizationChart() {
   const [isKairoExpanded, setIsKairoExpanded] = React.useState(false);
   const [isShikinExpanded, setIsShikinExpanded] = React.useState(false);
@@ -66,6 +101,20 @@ export function OrganizationChart() {
     React.useState<string[]>(defaultDailyTasks);
   const [newDaily, setNewDaily] = React.useState("");
 
+  const [shireibuOverrides, setShireibuOverrides] = React.useState<
+    Record<string, string>
+  >({});
+  const [shireibuLinkMenu, setShireibuLinkMenu] = React.useState<{
+    label: string;
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const shireibuHref = React.useCallback(
+    (label: string) => shireibuOverrides[label] ?? SHIREIBU_DEFAULT_HREFS[label] ?? "#",
+    [shireibuOverrides]
+  );
+
   const [storageReady, setStorageReady] = React.useState(false);
 
   // 描画前に読み込み、デフォルト表示のフラッシュと「勝手に戻った」ように見える挙動を抑える
@@ -93,6 +142,13 @@ export function OrganizationChart() {
       if (d) setDailyTasks(JSON.parse(d));
       const t = localStorage.getItem("taskHistory");
       if (t) setTaskHistory(JSON.parse(t));
+      const so = localStorage.getItem("shireibuLinkOverrides");
+      if (so) {
+        const parsed: unknown = JSON.parse(so);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          setShireibuOverrides(parsed as Record<string, string>);
+        }
+      }
     } catch {
       /* ignore invalid JSON */
     } finally {
@@ -120,6 +176,28 @@ export function OrganizationChart() {
     if (!storageReady) return;
     localStorage.setItem("taskHistory", JSON.stringify(taskHistory));
   }, [taskHistory, storageReady]);
+
+  React.useEffect(() => {
+    if (!storageReady) return;
+    localStorage.setItem(
+      "shireibuLinkOverrides",
+      JSON.stringify(shireibuOverrides)
+    );
+  }, [shireibuOverrides, storageReady]);
+
+  React.useEffect(() => {
+    if (!shireibuLinkMenu) return;
+    const close = () => setShireibuLinkMenu(null);
+    const t = window.setTimeout(() => {
+      window.addEventListener("click", close);
+      window.addEventListener("scroll", close, true);
+    }, 0);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener("click", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [shireibuLinkMenu]);
 
   const handleAddMemo = () => {
     if (newMemo.trim()) {
@@ -229,16 +307,37 @@ export function OrganizationChart() {
       <div className="flex flex-col items-start space-y-16">
         {/* 最上部：司令本部、雑談部屋、気になること枠 */}
         <div className="flex flex-wrap gap-6 items-start w-full">
-          {/* 司令本部 */}
-          <a 
-            href="https://chatgpt.com/g/g-p-691ecfa61b688191aff053276412376b-esientomoto/c/69cf0247-24a8-83aa-8d84-2762c83d6a7c"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-gray-900 text-white px-12 py-8 rounded-lg shadow-lg min-w-[320px] text-center hover:bg-gray-800 transition-colors cursor-pointer"
-          >
-            <div className="text-2xl mb-2 tracking-wide">司令本部</div>
-            <div className="text-sm text-gray-300 tracking-wider">意思決定</div>
-          </a>
+          {/* 司令本部（分野別4リンク） */}
+          <div className="bg-gray-900 text-white px-8 py-6 rounded-lg shadow-lg min-w-[280px] max-w-md">
+            <div className="text-2xl mb-1 tracking-wide text-center">司令本部</div>
+            <p className="text-xs text-gray-400 text-center mb-1 tracking-wider">
+              意思決定 · 分野から開く
+            </p>
+            <p className="text-[10px] text-gray-500 text-center mb-3">
+              右クリックでリンク先の変更・コピーなど
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {shireibuLinks.map(({ label }) => (
+                <a
+                  key={label}
+                  href={shireibuHref(label)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setShireibuLinkMenu({
+                      label,
+                      x: e.clientX,
+                      y: e.clientY,
+                    });
+                  }}
+                  className="flex items-center justify-center text-center text-sm font-medium text-white bg-gray-800 border border-gray-600 rounded-lg px-3 py-3 hover:bg-gray-700 transition-colors"
+                >
+                  {label}
+                </a>
+              ))}
+            </div>
+          </div>
 
           {/* 雑談部屋（レベル別4リンク） */}
           <div className="bg-yellow-100 border-2 border-yellow-400 px-8 py-6 rounded-lg shadow-md min-w-[280px] max-w-md hover:shadow-lg transition-shadow">
@@ -976,6 +1075,96 @@ export function OrganizationChart() {
           </div>
         </div>
       </div>
+
+      {shireibuLinkMenu && (
+        <div
+          role="menu"
+          className="fixed z-[100] min-w-[200px] rounded-lg border border-gray-600 bg-gray-900 py-1 text-sm text-white shadow-xl"
+          style={{
+            left: Math.max(
+              8,
+              Math.min(shireibuLinkMenu.x, window.innerWidth - 220)
+            ),
+            top: Math.max(
+              8,
+              Math.min(shireibuLinkMenu.y, window.innerHeight - 200)
+            ),
+          }}
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <div className="border-b border-gray-700 px-3 py-2 text-xs text-gray-400">
+            {shireibuLinkMenu.label}
+          </div>
+          <button
+            type="button"
+            role="menuitem"
+            className="block w-full px-3 py-2 text-left hover:bg-gray-800"
+            onClick={() => {
+              window.open(shireibuHref(shireibuLinkMenu.label), "_blank", "noopener,noreferrer");
+              setShireibuLinkMenu(null);
+            }}
+          >
+            このリンクを開く
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="block w-full px-3 py-2 text-left hover:bg-gray-800"
+            onClick={async () => {
+              const label = shireibuLinkMenu.label;
+              const current = shireibuHref(label);
+              const input = window.prompt(`${label} のリンク先 URL`, current);
+              setShireibuLinkMenu(null);
+              if (input === null) return;
+              const trimmed = input.trim();
+              if (!trimmed) {
+                window.alert("URL が空です。キャンセルする場合は「キャンセル」を押してください。");
+                return;
+              }
+              if (!isValidHttpUrl(trimmed)) {
+                window.alert("http または https で始まる URL を入力してください。");
+                return;
+              }
+              setShireibuOverrides((prev) => ({ ...prev, [label]: trimmed }));
+            }}
+          >
+            リンク先を設定…
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="block w-full px-3 py-2 text-left hover:bg-gray-800"
+            onClick={() => {
+              const label = shireibuLinkMenu.label;
+              setShireibuLinkMenu(null);
+              setShireibuOverrides((prev) => {
+                const next = { ...prev };
+                delete next[label];
+                return next;
+              });
+            }}
+          >
+            コードの初期リンクに戻す
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="block w-full px-3 py-2 text-left hover:bg-gray-800"
+            onClick={async () => {
+              const url = shireibuHref(shireibuLinkMenu.label);
+              setShireibuLinkMenu(null);
+              try {
+                await navigator.clipboard.writeText(url);
+              } catch {
+                window.prompt("コピーできない環境です。手でコピーしてください:", url);
+              }
+            }}
+          >
+            リンクをコピー
+          </button>
+        </div>
+      )}
 
       {/* フッター */}
       <div className="mt-20 text-center text-sm text-gray-400">
