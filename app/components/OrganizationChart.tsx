@@ -31,8 +31,8 @@ const defaultPriorityTasks: PriorityTaskItem[] = [
 const defaultDailyTasks = ["毎日タスク1", "毎日タスク2", "毎日タスク3"];
 
 export function OrganizationChart() {
-  const [isKairoExpanded, setIsKairoExpanded] = React.useState(true);
-  const [isShikinExpanded, setIsShikinExpanded] = React.useState(true);
+  const [isKairoExpanded, setIsKairoExpanded] = React.useState(false);
+  const [isShikinExpanded, setIsShikinExpanded] = React.useState(false);
   const [isEditingMemo, setIsEditingMemo] = React.useState(false);
   
   const [memoItems, setMemoItems] =
