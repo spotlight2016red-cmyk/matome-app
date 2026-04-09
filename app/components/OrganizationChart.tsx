@@ -240,16 +240,49 @@ export function OrganizationChart() {
             <div className="text-sm text-gray-300 tracking-wider">意思決定</div>
           </a>
 
-          {/* 雑談部屋 */}
-          <a 
-            href="https://chatgpt.com/share/69d3103a-4704-83a2-80e1-ec24f7ef4923"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-yellow-100 border-2 border-yellow-400 px-8 py-6 rounded-lg shadow-md min-w-[280px] hover:shadow-lg transition-shadow cursor-pointer"
-          >
-            <div className="text-xl text-yellow-800 tracking-wide mb-2">💬 雑談部屋</div>
-            <div className="text-sm text-yellow-700">気軽にトーク</div>
-          </a>
+          {/* 雑談部屋（レベル別4リンク） */}
+          <div className="bg-yellow-100 border-2 border-yellow-400 px-8 py-6 rounded-lg shadow-md min-w-[280px] max-w-md hover:shadow-lg transition-shadow">
+            <div className="text-xl text-yellow-800 tracking-wide mb-1 text-center">
+              💬 雑談部屋
+            </div>
+            <p className="text-xs text-yellow-700 text-center mb-4 tracking-wide">
+              レベルに合わせて開く
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <a
+                href="https://chatgpt.com/share/69d83663-efb8-83a7-95b7-6288f433af08"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center text-center text-sm font-medium text-yellow-900 bg-yellow-50 border border-yellow-500 rounded-lg px-3 py-3 hover:bg-yellow-200/80 transition-colors"
+              >
+                初期レベル
+              </a>
+              <a
+                href="https://chatgpt.com/share/69d83691-dea8-83a2-bf64-c13659698f92"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center text-center text-sm font-medium text-yellow-900 bg-yellow-50 border border-yellow-500 rounded-lg px-3 py-3 hover:bg-yellow-200/80 transition-colors"
+              >
+                中レベル
+              </a>
+              <a
+                href="https://chatgpt.com/share/69d3103a-4704-83a2-80e1-ec24f7ef4923"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center text-center text-sm font-medium text-yellow-900 bg-yellow-50 border border-yellow-500 rounded-lg px-3 py-3 hover:bg-yellow-200/80 transition-colors"
+              >
+                上レベル
+              </a>
+              <a
+                href="https://chatgpt.com/share/69d836d3-bc5c-83ab-a2f1-473c588c6dbd"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center text-center text-sm font-medium text-yellow-900 bg-yellow-50 border border-yellow-500 rounded-lg px-3 py-3 hover:bg-yellow-200/80 transition-colors"
+              >
+                真面目
+              </a>
+            </div>
+          </div>
 
           {/* 気になること枠 */}
           <div 
