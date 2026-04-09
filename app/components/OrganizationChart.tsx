@@ -20,10 +20,13 @@ function FlowArrow() {
 }
 
 const defaultMemoItems = ["メモ項目1", "メモ項目2", "メモ項目3"];
-const defaultPriorityTasks = [
-  { task: "最優先タスク1", time: "10:00" },
-  { task: "最優先タスク2", time: "14:00" },
-  { task: "最優先タスク3", time: "16:30" },
+
+type PriorityTaskItem = { task: string; time: string; done: boolean };
+
+const defaultPriorityTasks: PriorityTaskItem[] = [
+  { task: "最優先タスク1", time: "10:00", done: false },
+  { task: "最優先タスク2", time: "14:00", done: false },
+  { task: "最優先タスク3", time: "16:30", done: false },
 ];
 const defaultDailyTasks = ["毎日タスク1", "毎日タスク2", "毎日タスク3"];
 
@@ -37,9 +40,8 @@ export function OrganizationChart() {
   const [newMemo, setNewMemo] = React.useState('');
   
   const [isEditingPriority, setIsEditingPriority] = React.useState(false);
-  const [priorityTasks, setPriorityTasks] = React.useState<
-    Array<{ task: string; time: string }>
-  >(defaultPriorityTasks);
+  const [priorityTasks, setPriorityTasks] =
+    React.useState<PriorityTaskItem[]>(defaultPriorityTasks);
   const [newPriority, setNewPriority] = React.useState('');
   const [newPriorityTime, setNewPriorityTime] = React.useState('');
   const [editingTimeIndex, setEditingTimeIndex] = React.useState<number | null>(null);
@@ -72,7 +74,21 @@ export function OrganizationChart() {
       const m = localStorage.getItem("memoItems");
       if (m) setMemoItems(JSON.parse(m));
       const p = localStorage.getItem("priorityTasks");
-      if (p) setPriorityTasks(JSON.parse(p));
+      if (p) {
+        const parsed: unknown = JSON.parse(p);
+        if (Array.isArray(parsed)) {
+          setPriorityTasks(
+            parsed.map((row: unknown) => {
+              const t = row as { task?: string; time?: string; done?: boolean };
+              return {
+                task: String(t?.task ?? ""),
+                time: String(t?.time ?? ""),
+                done: Boolean(t?.done),
+              };
+            })
+          );
+        }
+      }
       const d = localStorage.getItem("dailyTasks");
       if (d) setDailyTasks(JSON.parse(d));
       const t = localStorage.getItem("taskHistory");
@@ -124,7 +140,10 @@ export function OrganizationChart() {
 
   const handleAddPriority = () => {
     if (newPriority.trim() && newPriorityTime.trim()) {
-      setPriorityTasks([...priorityTasks, { task: newPriority.trim(), time: newPriorityTime.trim() }]);
+      setPriorityTasks([
+        ...priorityTasks,
+        { task: newPriority.trim(), time: newPriorityTime.trim(), done: false },
+      ]);
       setNewPriority('');
       setNewPriorityTime('');
     }
@@ -136,13 +155,26 @@ export function OrganizationChart() {
 
   const handleUpdatePriority = (index: number, value: string, time: string) => {
     const updated = [...priorityTasks];
-    updated[index] = { task: value, time: time };
+    const prev = updated[index];
+    updated[index] = {
+      task: value,
+      time: time,
+      done: prev?.done ?? false,
+    };
     setPriorityTasks(updated);
     
     // タスク名を履歴に追加（重複は避け��）
     if (value.trim() && !taskHistory.includes(value.trim())) {
       setTaskHistory([...taskHistory, value.trim()]);
     }
+  };
+
+  const handleTogglePriorityDone = (index: number) => {
+    setPriorityTasks(
+      priorityTasks.map((t, i) =>
+        i === index ? { ...t, done: !t.done } : t
+      )
+    );
   };
 
   const handleAddDaily = () => {
@@ -169,7 +201,7 @@ export function OrganizationChart() {
         "今日の最優先を初期の3件に戻しますか？\n今の一覧は破棄され、ブラウザに保存されている内容も上書きされます。"
       )
     ) {
-      setPriorityTasks(defaultPriorityTasks.map((t) => ({ ...t })));
+      setPriorityTasks(defaultPriorityTasks.map((t) => ({ ...t, done: false })));
     }
   };
 
@@ -366,6 +398,20 @@ export function OrganizationChart() {
                             </svg>
                           </div>
                         </div>
+                        <label
+                          className="flex items-center gap-1 shrink-0 text-xs text-gray-600 cursor-pointer select-none"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={task.done}
+                            onChange={() => handleTogglePriorityDone(index)}
+                            className="size-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                            onClick={(e) => e.stopPropagation()}
+                            aria-label="完了したらチェック"
+                          />
+                          済
+                        </label>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -422,9 +468,12 @@ export function OrganizationChart() {
                 ) : (
                   <div className="text-sm text-gray-700 text-left space-y-2" onClick={(e) => e.stopPropagation()}>
                     {priorityTasks.map((task, index) => (
-                      <div key={index} className="bg-white px-3 py-2 rounded border border-red-200">
+                      <div
+                        key={index}
+                        className={`bg-white px-3 py-2 rounded border border-red-200 ${task.done ? "opacity-90" : ""}`}
+                      >
                         <div className="flex items-center justify-between gap-2">
-                          <div className="flex-1 relative">
+                          <div className="flex-1 relative min-w-0">
                             {editingTaskIndex === index ? (
                               <div>
                                 <input
@@ -479,45 +528,63 @@ export function OrganizationChart() {
                                   setEditingTaskIndex(index);
                                   setEditingTimeIndex(null);
                                 }}
-                                className="cursor-pointer hover:text-red-700"
+                                className={`cursor-pointer hover:text-red-700 ${task.done ? "line-through text-gray-400" : ""}`}
                               >
                                 {task.task}
                               </div>
                             )}
                           </div>
-                          <div className="relative">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingTimeIndex(editingTimeIndex === index ? null : index);
-                                setEditingTaskIndex(null);
-                              }}
-                              className="text-red-600 hover:text-red-700 font-medium px-2 py-1 border border-red-300 rounded bg-red-50"
-                            >
-                              {task.time}
-                            </button>
-                            
-                            {/* 時間選択ドロップダウン */}
-                            {editingTimeIndex === index && (
-                              <div 
-                                className="absolute right-0 mt-1 bg-white border-2 border-red-300 rounded-lg shadow-xl z-10 max-h-60 overflow-y-auto w-24"
-                                onClick={(e) => e.stopPropagation()}
+                          <div className="flex items-center gap-2 shrink-0">
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingTimeIndex(editingTimeIndex === index ? null : index);
+                                  setEditingTaskIndex(null);
+                                }}
+                                className={`text-red-600 hover:text-red-700 font-medium px-2 py-1 border border-red-300 rounded bg-red-50 ${task.done ? "line-through opacity-70" : ""}`}
                               >
-                                {timeOptions.map((time) => (
-                                  <button
-                                    key={time}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleUpdatePriority(index, task.task, time);
-                                      setEditingTimeIndex(null);
-                                    }}
-                                    className="w-full text-left px-3 py-2 hover:bg-red-100 transition-colors text-sm"
-                                  >
-                                    {time}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
+                                {task.time}
+                              </button>
+                              
+                              {/* 時間選択ドロップダウン */}
+                              {editingTimeIndex === index && (
+                                <div 
+                                  className="absolute right-0 mt-1 bg-white border-2 border-red-300 rounded-lg shadow-xl z-10 max-h-60 overflow-y-auto w-24"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {timeOptions.map((time) => (
+                                    <button
+                                      key={time}
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleUpdatePriority(index, task.task, time);
+                                        setEditingTimeIndex(null);
+                                      }}
+                                      className="w-full text-left px-3 py-2 hover:bg-red-100 transition-colors text-sm"
+                                    >
+                                      {time}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <label
+                              className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer select-none"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={task.done}
+                                onChange={() => handleTogglePriorityDone(index)}
+                                className="size-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                                onClick={(e) => e.stopPropagation()}
+                                aria-label="完了したらチェック"
+                              />
+                              済
+                            </label>
                           </div>
                         </div>
                       </div>
