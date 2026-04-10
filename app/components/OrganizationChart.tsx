@@ -912,9 +912,9 @@ export function OrganizationChart() {
                     <div className="w-0.5 h-16 bg-gray-300 my-4"></div>
                     <div className="w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[12px] border-t-gray-300"></div>
 
-                    {/* 3つの部署（横並び） */}
+                    {/* 3つの要素（横並び）— 映画『残すということ』 */}
                     <div className="flex flex-col md:flex-row gap-6 mt-8 items-stretch">
-                      {/* 設計部 */}
+                      {/* 広報 */}
                       <div className="w-56">
                         <a 
                           href="https://chatgpt.com/share/69d1a685-708c-83a7-8df5-895b36ce7ad7"
@@ -923,7 +923,7 @@ export function OrganizationChart() {
                           className="block bg-white border-2 border-gray-200 px-6 py-6 rounded-lg shadow-sm hover:shadow-md transition-shadow h-full cursor-pointer"
                         >
                           <div className="text-center">
-                            <div className="text-lg mb-3 text-gray-900 tracking-wide">設計部</div>
+                            <div className="text-lg mb-3 text-gray-900 tracking-wide">広報</div>
                             <div className="h-px bg-gray-200 mb-3"></div>
                             <div className="space-y-1.5 text-gray-600">
                               <div className="text-xs tracking-wide">構造</div>
@@ -934,7 +934,7 @@ export function OrganizationChart() {
                         </a>
                       </div>
 
-                      {/* コンテンツ部 */}
+                      {/* 撮影・編集 */}
                       <div className="w-56">
                         <a 
                           href="https://chatgpt.com/share/69d1a69d-9c04-83ab-836a-55b3f0e9cebc"
@@ -943,7 +943,7 @@ export function OrganizationChart() {
                           className="block bg-white border-2 border-gray-200 px-6 py-6 rounded-lg shadow-sm hover:shadow-md transition-shadow h-full cursor-pointer"
                         >
                           <div className="text-center">
-                            <div className="text-lg mb-3 text-gray-900 tracking-wide">コンテンツ部</div>
+                            <div className="text-lg mb-3 text-gray-900 tracking-wide">撮影・編集</div>
                             <div className="h-px bg-gray-200 mb-3"></div>
                             <div className="space-y-1.5 text-gray-600">
                               <div className="text-xs tracking-wide">映像</div>
@@ -954,7 +954,7 @@ export function OrganizationChart() {
                         </a>
                       </div>
 
-                      {/* ビジネス部 */}
+                      {/* 上映 */}
                       <div className="w-56">
                         <a 
                           href="https://chatgpt.com/share/69d1a6ae-fb70-83aa-8b1c-c0e13e6e05be"
@@ -963,7 +963,7 @@ export function OrganizationChart() {
                           className="block bg-white border-2 border-gray-200 px-6 py-6 rounded-lg shadow-sm hover:shadow-md transition-shadow h-full cursor-pointer"
                         >
                           <div className="text-center">
-                            <div className="text-lg mb-3 text-gray-900 tracking-wide">ビジネス部</div>
+                            <div className="text-lg mb-3 text-gray-900 tracking-wide">上映</div>
                             <div className="h-px bg-gray-200 mb-3"></div>
                             <div className="space-y-1.5 text-gray-600">
                               <div className="text-xs tracking-wide">営業</div>
