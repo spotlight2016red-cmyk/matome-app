@@ -23,7 +23,7 @@ const defaultMemoItems = ["メモ項目1", "メモ項目2", "メモ項目3"];
 
 type PriorityTaskItem = { task: string; time: string; done: boolean };
 
-/** KAIRŌ「残すということ」広報枠の下のタスク */
+/** 司令本部「映画広報」下 — 映画『残すということ』用タスク */
 type KohoTaskItem = { id: string; content: string; due: string; done: boolean };
 
 const KAIRO_KOHO_TASKS_STORAGE_KEY = "kairoNokotoniKohoTasks";
@@ -389,7 +389,7 @@ export function OrganizationChart() {
         {/* 最上部：司令本部、雑談部屋、気になること枠 */}
         <div className="flex flex-wrap gap-6 items-start w-full">
           {/* 司令本部（映画統括＋分野別4リンク） */}
-          <div className="bg-gray-900 text-white px-8 py-6 rounded-lg shadow-lg min-w-[280px] max-w-md">
+          <div className="bg-gray-900 text-white px-8 py-6 rounded-lg shadow-lg min-w-[280px] max-w-xl">
             <div className="text-2xl mb-1 tracking-wide text-center">司令本部</div>
             <p className="text-xs text-gray-400 text-center mb-1 tracking-wider">
               意思決定 · 分野から開く
@@ -414,26 +414,178 @@ export function OrganizationChart() {
               >
                 {shireibuTopLink.label}
               </a>
-              <div className="grid grid-cols-2 gap-2">
-                {shireibuLinks.map(({ label }) => (
+              <div className="flex gap-2 items-start">
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
                   <a
-                    key={label}
-                    href={shireibuHref(label)}
+                    href={shireibuHref("映画編集")}
                     target="_blank"
                     rel="noopener noreferrer"
                     onContextMenu={(e) => {
                       e.preventDefault();
                       setShireibuLinkMenu({
-                        label,
+                        label: "映画編集",
                         x: e.clientX,
                         y: e.clientY,
                       });
                     }}
                     className="flex items-center justify-center text-center text-sm font-medium text-white bg-gray-800 border border-gray-600 rounded-lg px-3 py-3 hover:bg-gray-700 transition-colors"
                   >
-                    {label}
+                    映画編集
                   </a>
-                ))}
+                  <a
+                    href={shireibuHref("映画撮影")}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setShireibuLinkMenu({
+                        label: "映画撮影",
+                        x: e.clientX,
+                        y: e.clientY,
+                      });
+                    }}
+                    className="flex items-center justify-center text-center text-sm font-medium text-white bg-gray-800 border border-gray-600 rounded-lg px-3 py-3 hover:bg-gray-700 transition-colors"
+                  >
+                    映画撮影
+                  </a>
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                  <a
+                    href={shireibuHref("映画広報")}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setShireibuLinkMenu({
+                        label: "映画広報",
+                        x: e.clientX,
+                        y: e.clientY,
+                      });
+                    }}
+                    className="flex items-center justify-center text-center text-sm font-medium text-white bg-gray-800 border border-gray-600 rounded-lg px-3 py-3 hover:bg-gray-700 transition-colors"
+                  >
+                    映画広報
+                  </a>
+                  <div
+                    className="rounded-lg border border-gray-600 bg-gray-800/95 p-3 shadow-sm text-left"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="text-xs font-semibold text-gray-100 mb-2">
+                      広報タスク
+                      <span className="block text-[10px] font-normal text-gray-400 mt-0.5">
+                        映画『残すということ』
+                      </span>
+                    </div>
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {kohoTasks.length === 0 && (
+                        <p className="text-[11px] text-gray-500 py-1">
+                          下のフォームからタスクを追加できます
+                        </p>
+                      )}
+                      {kohoTasks.map((t) => (
+                        <div
+                          key={t.id}
+                          className={`rounded border border-gray-600 bg-gray-900/60 p-2 space-y-1.5 ${t.done ? "opacity-75" : ""}`}
+                        >
+                          <div className="flex items-start gap-2">
+                            <label className="flex flex-col items-center gap-0.5 shrink-0 pt-0.5 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={t.done}
+                                onChange={() =>
+                                  handleUpdateKohoTask(t.id, {
+                                    done: !t.done,
+                                  })
+                                }
+                                className="size-3.5 rounded border-gray-500 bg-gray-900"
+                                aria-label="完了"
+                              />
+                              <span className="text-[9px] text-gray-400 leading-none">
+                                済
+                              </span>
+                            </label>
+                            <input
+                              type="text"
+                              value={t.content}
+                              onChange={(e) =>
+                                handleUpdateKohoTask(t.id, {
+                                  content: e.target.value,
+                                })
+                              }
+                              className={`flex-1 min-w-0 text-xs rounded px-1.5 py-0.5 border border-gray-600 bg-gray-900 text-gray-100 focus:border-blue-400 focus:outline-none ${t.done ? "line-through text-gray-500" : ""}`}
+                              placeholder="内容"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteKohoTask(t.id)}
+                              className="shrink-0 text-red-400 hover:text-red-300 text-base leading-none px-0.5"
+                              aria-label="削除"
+                            >
+                              ×
+                            </button>
+                          </div>
+                          <div className="space-y-0.5">
+                            <span className="text-[10px] text-gray-400">期限</span>
+                            <input
+                              type="date"
+                              value={t.due}
+                              onChange={(e) =>
+                                handleUpdateKohoTask(t.id, {
+                                  due: e.target.value,
+                                })
+                              }
+                              className="w-full text-[11px] rounded px-1.5 py-0.5 border border-gray-600 bg-gray-900 text-gray-200"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-3 pt-2 border-t border-gray-600 space-y-2">
+                      <input
+                        type="text"
+                        value={newKohoContent}
+                        onChange={(e) => setNewKohoContent(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleAddKohoTask();
+                        }}
+                        placeholder="新しいタスクの内容"
+                        className="w-full text-xs rounded px-2 py-1.5 border border-gray-600 bg-gray-900 text-gray-100 placeholder:text-gray-500"
+                      />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[10px] text-gray-400 shrink-0">期限</span>
+                        <input
+                          type="date"
+                          value={newKohoDue}
+                          onChange={(e) => setNewKohoDue(e.target.value)}
+                          className="flex-1 min-w-[7rem] text-[11px] rounded px-1.5 py-0.5 border border-gray-600 bg-gray-900 text-gray-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddKohoTask}
+                          className="shrink-0 text-xs bg-amber-600 text-white px-2.5 py-1 rounded hover:bg-amber-500"
+                        >
+                          追加
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <a
+                    href={shireibuHref("映画上映")}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setShireibuLinkMenu({
+                        label: "映画上映",
+                        x: e.clientX,
+                        y: e.clientY,
+                      });
+                    }}
+                    className="flex items-center justify-center text-center text-sm font-medium text-white bg-gray-800 border border-gray-600 rounded-lg px-3 py-3 hover:bg-gray-700 transition-colors"
+                  >
+                    映画上映
+                  </a>
+                </div>
               </div>
             </div>
           </div>
@@ -989,12 +1141,12 @@ export function OrganizationChart() {
                     {/* 3つの要素（横並び）— 映画『残すということ』 */}
                     <div className="flex flex-col md:flex-row gap-6 mt-8 items-stretch">
                       {/* 広報 */}
-                      <div className="w-64 shrink-0 flex flex-col gap-3">
+                      <div className="w-56 shrink-0">
                         <a
                           href="https://chatgpt.com/share/69d1a685-708c-83a7-8df5-895b36ce7ad7"
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="block bg-white border-2 border-gray-200 px-6 py-6 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                          className="block bg-white border-2 border-gray-200 px-6 py-6 rounded-lg shadow-sm hover:shadow-md transition-shadow h-full cursor-pointer"
                         >
                           <div className="text-center">
                             <div className="text-lg mb-3 text-gray-900 tracking-wide">広報</div>
@@ -1006,109 +1158,6 @@ export function OrganizationChart() {
                             </div>
                           </div>
                         </a>
-                        <div
-                          className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm text-left"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <div className="text-xs font-semibold text-gray-800 mb-2">
-                            広報タスク
-                            <span className="block text-[10px] font-normal text-gray-500 mt-0.5">
-                              映画『残すということ』
-                            </span>
-                          </div>
-                          <div className="space-y-2 max-h-64 overflow-y-auto">
-                            {kohoTasks.length === 0 && (
-                              <p className="text-[11px] text-gray-400 py-1">
-                                下のフォームからタスクを追加できます
-                              </p>
-                            )}
-                            {kohoTasks.map((t) => (
-                              <div
-                                key={t.id}
-                                className={`rounded border border-gray-100 bg-gray-50/90 p-2 space-y-1.5 ${t.done ? "opacity-80" : ""}`}
-                              >
-                                <div className="flex items-start gap-2">
-                                  <label className="flex flex-col items-center gap-0.5 shrink-0 pt-0.5 cursor-pointer">
-                                    <input
-                                      type="checkbox"
-                                      checked={t.done}
-                                      onChange={() =>
-                                        handleUpdateKohoTask(t.id, {
-                                          done: !t.done,
-                                        })
-                                      }
-                                      className="size-3.5 rounded border-gray-300"
-                                      aria-label="完了"
-                                    />
-                                    <span className="text-[9px] text-gray-500 leading-none">
-                                      済
-                                    </span>
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={t.content}
-                                    onChange={(e) =>
-                                      handleUpdateKohoTask(t.id, {
-                                        content: e.target.value,
-                                      })
-                                    }
-                                    className={`flex-1 min-w-0 text-xs border border-transparent rounded px-1.5 py-0.5 bg-white focus:border-blue-300 focus:outline-none ${t.done ? "line-through text-gray-400" : "text-gray-800"}`}
-                                    placeholder="内容"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteKohoTask(t.id)}
-                                    className="shrink-0 text-red-500 hover:text-red-700 text-base leading-none px-0.5"
-                                    aria-label="削除"
-                                  >
-                                    ×
-                                  </button>
-                                </div>
-                                <div className="space-y-0.5">
-                                  <span className="text-[10px] text-gray-500">期限</span>
-                                  <input
-                                    type="date"
-                                    value={t.due}
-                                    onChange={(e) =>
-                                      handleUpdateKohoTask(t.id, {
-                                        due: e.target.value,
-                                      })
-                                    }
-                                    className="w-full text-[11px] border border-gray-200 rounded px-1.5 py-0.5 bg-white"
-                                  />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                          <div className="mt-3 pt-2 border-t border-gray-200 space-y-2">
-                            <input
-                              type="text"
-                              value={newKohoContent}
-                              onChange={(e) => setNewKohoContent(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") handleAddKohoTask();
-                              }}
-                              placeholder="新しいタスクの内容"
-                              className="w-full text-xs border border-gray-200 rounded px-2 py-1.5"
-                            />
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-[10px] text-gray-500 shrink-0">期限</span>
-                              <input
-                                type="date"
-                                value={newKohoDue}
-                                onChange={(e) => setNewKohoDue(e.target.value)}
-                                className="flex-1 min-w-[7rem] text-[11px] border border-gray-200 rounded px-1.5 py-0.5"
-                              />
-                              <button
-                                type="button"
-                                onClick={handleAddKohoTask}
-                                className="shrink-0 text-xs bg-blue-600 text-white px-2.5 py-1 rounded hover:bg-blue-700"
-                              >
-                                追加
-                              </button>
-                            </div>
-                          </div>
-                        </div>
                       </div>
 
                       {/* 撮影・編集 */}
