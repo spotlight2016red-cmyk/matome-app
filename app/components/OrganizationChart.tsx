@@ -23,29 +23,39 @@ const defaultMemoItems = ["メモ項目1", "メモ項目2", "メモ項目3"];
 
 type PriorityTaskItem = { task: string; time: string; done: boolean };
 
-/** 司令本部ロール別タスク（内容・期限・済） */
-type KohoTaskItem = { id: string; content: string; due: string; done: boolean };
-
 const SHIREIBU_TASKS_STORAGE_KEY = "shireibuTasksByRole";
 /** 移行用（旧キー → 映画広報） */
 const LEGACY_KOHO_TASKS_STORAGE_KEY = "kairoNokotoniKohoTasks";
 
-function newKohoTaskId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-}
+const PRIORITY_TIME_OPTIONS = [
+  "6:00", "6:30", "7:00", "7:30", "8:00", "8:30", "9:00", "9:30",
+  "10:00", "10:30", "11:00", "11:30", "12:00", "12:30",
+  "13:00", "13:30", "14:00", "14:30", "15:00", "15:30",
+  "16:00", "16:30", "17:00", "17:30", "18:00", "18:30",
+  "19:00", "19:30", "20:00", "20:30", "21:00", "21:30",
+  "22:00", "22:30", "23:00", "23:30",
+] as const;
 
-function normalizeKohoTask(row: unknown): KohoTaskItem | null {
+function normalizeShireibuStoredTask(row: unknown): PriorityTaskItem | null {
   if (!row || typeof row !== "object") return null;
   const r = row as Record<string, unknown>;
-  return {
-    id: String(r.id ?? newKohoTaskId()),
-    content: String(r.content ?? ""),
-    due: String(r.due ?? ""),
-    done: Boolean(r.done),
-  };
+  if ("task" in r || "time" in r) {
+    return {
+      task: String(r.task ?? ""),
+      time: String(r.time ?? ""),
+      done: Boolean(r.done),
+    };
+  }
+  if ("content" in r) {
+    const due = String(r.due ?? "");
+    const time = /^\d{1,2}:\d{2}/.test(due) ? due.match(/^\d{1,2}:\d{2}/)![0] : "10:00";
+    return {
+      task: String(r.content ?? ""),
+      time,
+      done: Boolean(r.done),
+    };
+  }
+  return null;
 }
 
 const defaultPriorityTasks: PriorityTaskItem[] = [
@@ -110,120 +120,351 @@ function isEnterKeyCommit(e: React.KeyboardEvent): boolean {
   return true;
 }
 
-type ShireibuTaskDraft = { content: string; due: string };
-
-function ShireibuTaskPanel({
-  roleKey,
+/** 司令ロール別 — 「今日の最優先」と同じ操作・表示（タイトルのみロール名） */
+function ShireibuPriorityTasksPanel({
+  title,
   tasks,
-  draft,
-  onDraftChange,
-  onAdd,
-  onUpdate,
-  onDelete,
+  setTaskList,
+  taskHistory,
+  setTaskHistory,
 }: {
-  roleKey: string;
-  tasks: KohoTaskItem[];
-  draft: ShireibuTaskDraft;
-  onDraftChange: (patch: Partial<ShireibuTaskDraft>) => void;
-  onAdd: () => void;
-  onUpdate: (
-    id: string,
-    patch: Partial<Pick<KohoTaskItem, "content" | "due" | "done">>
-  ) => void;
-  onDelete: (id: string) => void;
+  title: string;
+  tasks: PriorityTaskItem[];
+  setTaskList: React.Dispatch<React.SetStateAction<PriorityTaskItem[]>>;
+  taskHistory: string[];
+  setTaskHistory: React.Dispatch<React.SetStateAction<string[]>>;
 }) {
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [newTask, setNewTask] = React.useState("");
+  const [newTime, setNewTime] = React.useState("");
+  const [editingTimeIndex, setEditingTimeIndex] = React.useState<number | null>(
+    null
+  );
+  const [editingTaskIndex, setEditingTaskIndex] = React.useState<number | null>(
+    null
+  );
+  const [taskInputValue, setTaskInputValue] = React.useState("");
+
+  const updateTask = (index: number, task: string, time: string) => {
+    setTaskList((prev) => {
+      const updated = [...prev];
+      const p = updated[index];
+      updated[index] = { task, time, done: p?.done ?? false };
+      return updated;
+    });
+    const t = task.trim();
+    if (t) {
+      setTaskHistory((h) => (h.includes(t) ? h : [...h, t]));
+    }
+  };
+
+  const handleAdd = () => {
+    const nt = newTask.trim();
+    const tm = newTime.trim();
+    if (!nt && !tm) return;
+    setTaskList((prev) => [
+      ...prev,
+      { task: nt, time: tm, done: false },
+    ]);
+    if (nt) {
+      setTaskHistory((h) => (h.includes(nt) ? h : [...h, nt]));
+    }
+    setNewTask("");
+    setNewTime("");
+  };
+
+  const handleDelete = (index: number) => {
+    setTaskList((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const toggleDone = (index: number) => {
+    setTaskList((prev) =>
+      prev.map((t, i) => (i === index ? { ...t, done: !t.done } : t))
+    );
+  };
+
   return (
     <div
-      className="rounded-lg border border-gray-600 bg-gray-800/95 p-3 shadow-sm text-left"
-      onClick={(e) => e.stopPropagation()}
+      className="bg-red-50 border-2 border-red-400 px-4 py-4 sm:px-6 sm:py-5 rounded-lg shadow-md min-w-0 w-full cursor-pointer text-left"
+      onClick={() => setIsEditing(true)}
     >
-      <div className="text-xs font-semibold text-gray-100 mb-2">
-        タスク
-        <span className="block text-[10px] font-normal text-gray-400 mt-0.5">
-          {roleKey}
-          <span className="block mt-0.5 text-gray-500">映画『残すということ』</span>
-        </span>
-      </div>
-      <div className="space-y-2 max-h-48 overflow-y-auto">
-        {tasks.length === 0 && (
-          <p className="text-[11px] text-gray-500 py-1">
-            下のフォームからタスクを追加できます
-          </p>
-        )}
-        {tasks.map((t) => (
-          <div
-            key={t.id}
-            className={`rounded border border-gray-600 bg-gray-900/60 p-2 space-y-1.5 ${t.done ? "opacity-75" : ""}`}
+      <div className="flex items-center justify-between mb-3 gap-2">
+        <div className="text-base sm:text-lg text-red-700 tracking-wide font-medium">
+          🎯 {title}
+        </div>
+        {isEditing && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsEditing(false);
+            }}
+            className="text-xs bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded shrink-0"
           >
-            <div className="flex items-start gap-2">
-              <label className="flex flex-col items-center gap-0.5 shrink-0 pt-0.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={t.done}
-                  onChange={() => onUpdate(t.id, { done: !t.done })}
-                  className="size-3.5 rounded border-gray-500 bg-gray-900"
-                  aria-label="完了"
-                />
-                <span className="text-[9px] text-gray-400 leading-none">済</span>
-              </label>
+            完了
+          </button>
+        )}
+      </div>
+      <p className="text-[10px] text-red-600/80 mb-3 -mt-1">
+        映画『残すということ』
+      </p>
+
+      {isEditing ? (
+        <div
+          className="text-sm text-gray-700 space-y-2"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {tasks.map((task, index) => (
+            <div key={index} className="flex items-center gap-2 flex-wrap">
               <input
                 type="text"
-                value={t.content}
-                onChange={(e) => onUpdate(t.id, { content: e.target.value })}
-                className={`flex-1 min-w-0 text-xs rounded px-1.5 py-0.5 border border-gray-600 bg-gray-900 text-gray-100 focus:border-blue-400 focus:outline-none ${t.done ? "line-through text-gray-500" : ""}`}
-                placeholder="内容"
+                value={task.task}
+                onChange={(e) =>
+                  updateTask(index, e.target.value, task.time)
+                }
+                className="flex-1 min-w-[8rem] bg-white px-3 py-2 rounded border border-red-300 focus:outline-none focus:border-red-500"
+                onClick={(e) => e.stopPropagation()}
               />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={task.time}
+                  onChange={(e) =>
+                    updateTask(index, task.task, e.target.value)
+                  }
+                  className="w-20 bg-white px-3 py-2 rounded border border-red-300 focus:outline-none focus:border-red-500"
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 text-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    aria-hidden
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <label
+                className="flex items-center gap-1 shrink-0 text-xs text-gray-600 cursor-pointer select-none"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <input
+                  type="checkbox"
+                  checked={task.done}
+                  onChange={() => toggleDone(index)}
+                  className="size-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label="完了したらチェック"
+                />
+                済
+              </label>
               <button
                 type="button"
-                onClick={() => onDelete(t.id)}
-                className="shrink-0 text-red-400 hover:text-red-300 text-base leading-none px-0.5"
-                aria-label="削除"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete(index);
+                }}
+                className="text-red-600 hover:text-red-800 font-bold"
               >
                 ×
               </button>
             </div>
-            <div className="space-y-0.5">
-              <span className="text-[10px] text-gray-400">期限</span>
-              <input
-                type="date"
-                value={t.due}
-                onChange={(e) => onUpdate(t.id, { due: e.target.value })}
-                className="w-full text-[11px] rounded px-1.5 py-0.5 border border-gray-600 bg-gray-900 text-gray-200"
-              />
-            </div>
+          ))}
+          <div className="flex items-center gap-2 pt-2 flex-wrap">
+            <input
+              type="text"
+              value={newTask}
+              onChange={(e) => setNewTask(e.target.value)}
+              onKeyDown={(e) => {
+                if (!isEnterKeyCommit(e)) return;
+                e.preventDefault();
+                handleAdd();
+              }}
+              placeholder="内容（任意）"
+              className="flex-1 min-w-[8rem] bg-white px-3 py-2 rounded border border-red-300 focus:outline-none focus:border-red-500"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <input
+              type="text"
+              value={newTime}
+              onChange={(e) => setNewTime(e.target.value)}
+              onKeyDown={(e) => {
+                if (!isEnterKeyCommit(e)) return;
+                e.preventDefault();
+                handleAdd();
+              }}
+              placeholder="時間（任意）"
+              className="w-20 bg-white px-3 py-2 rounded border border-red-300 focus:outline-none focus:border-red-500"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAdd();
+              }}
+              className="text-green-600 hover:text-green-800 font-bold text-lg"
+            >
+              +
+            </button>
           </div>
-        ))}
-      </div>
-      <div className="mt-3 pt-2 border-t border-gray-600 space-y-2">
-        <input
-          type="text"
-          value={draft.content}
-          onChange={(e) => onDraftChange({ content: e.target.value })}
-          onKeyDown={(e) => {
-            if (!isEnterKeyCommit(e)) return;
-            e.preventDefault();
-            onAdd();
-          }}
-          placeholder="新しいタスクの内容"
-          className="w-full text-xs rounded px-2 py-1.5 border border-gray-600 bg-gray-900 text-gray-100 placeholder:text-gray-500"
-        />
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[10px] text-gray-400 shrink-0">期限</span>
-          <input
-            type="date"
-            value={draft.due}
-            onChange={(e) => onDraftChange({ due: e.target.value })}
-            className="flex-1 min-w-[7rem] text-[11px] rounded px-1.5 py-0.5 border border-gray-600 bg-gray-900 text-gray-200"
-          />
-          <button
-            type="button"
-            onClick={onAdd}
-            className="shrink-0 text-xs bg-amber-600 text-white px-2.5 py-1 rounded hover:bg-amber-500"
-          >
-            追加
-          </button>
         </div>
-      </div>
+      ) : (
+        <div
+          className="text-sm text-gray-700 space-y-2"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {tasks.length === 0 && (
+            <p className="text-xs text-gray-500">タップして追加・編集</p>
+          )}
+          {tasks.map((task, index) => (
+            <div
+              key={index}
+              className={`bg-white px-3 py-2 rounded border border-red-200 ${task.done ? "opacity-90" : ""}`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex-1 relative min-w-0">
+                  {editingTaskIndex === index ? (
+                    <div>
+                      <input
+                        type="text"
+                        value={taskInputValue}
+                        onChange={(e) => setTaskInputValue(e.target.value)}
+                        onBlur={() => {
+                          updateTask(index, taskInputValue.trim(), task.time);
+                          setEditingTaskIndex(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (!isEnterKeyCommit(e)) return;
+                          e.preventDefault();
+                          updateTask(index, taskInputValue.trim(), task.time);
+                          setEditingTaskIndex(null);
+                        }}
+                        className="w-full bg-white px-2 py-1 rounded border border-red-300 focus:outline-none focus:border-red-500"
+                        onClick={(e) => e.stopPropagation()}
+                        autoFocus
+                      />
+                      {taskHistory.length > 0 && taskInputValue.length > 0 && (
+                        <div className="absolute left-0 right-0 mt-1 bg-white border-2 border-red-300 rounded-lg shadow-xl z-20 max-h-48 overflow-y-auto">
+                          {taskHistory
+                            .filter((h) =>
+                              h
+                                .toLowerCase()
+                                .includes(taskInputValue.toLowerCase())
+                            )
+                            .map((h, hi) => (
+                              <button
+                                key={hi}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setTaskInputValue(h);
+                                  updateTask(index, h, task.time);
+                                  setEditingTaskIndex(null);
+                                }}
+                                className="w-full text-left px-3 py-2 hover:bg-red-100 transition-colors text-sm"
+                              >
+                                {h}
+                              </button>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTaskInputValue(task.task);
+                        setEditingTaskIndex(index);
+                        setEditingTimeIndex(null);
+                      }}
+                      className={`cursor-pointer hover:text-red-700 min-h-[1.25rem] ${task.done ? "line-through text-gray-400" : ""}`}
+                    >
+                      {task.task ? (
+                        task.task
+                      ) : (
+                        <span className="text-gray-400">（内容なし）</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingTimeIndex(
+                          editingTimeIndex === index ? null : index
+                        );
+                        setEditingTaskIndex(null);
+                      }}
+                      className={`text-red-600 hover:text-red-700 font-medium px-2 py-1 border border-red-300 rounded bg-red-50 min-w-[2.75rem] ${task.done ? "line-through opacity-70" : ""}`}
+                    >
+                      {task.time || "—"}
+                    </button>
+                    {editingTimeIndex === index && (
+                      <div
+                        className="absolute right-0 mt-1 bg-white border-2 border-red-300 rounded-lg shadow-xl z-10 max-h-60 overflow-y-auto w-24"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            updateTask(index, task.task, "");
+                            setEditingTimeIndex(null);
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-red-100 transition-colors text-sm text-gray-500 border-b border-red-100"
+                        >
+                          なし
+                        </button>
+                        {PRIORITY_TIME_OPTIONS.map((time) => (
+                          <button
+                            key={time}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateTask(index, task.task, time);
+                              setEditingTimeIndex(null);
+                            }}
+                            className="w-full text-left px-3 py-2 hover:bg-red-100 transition-colors text-sm"
+                          >
+                            {time}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <label
+                    className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer select-none"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={task.done}
+                      onChange={() => toggleDone(index)}
+                      className="size-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label="完了したらチェック"
+                    />
+                    済
+                  </label>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -274,16 +515,9 @@ export function OrganizationChart() {
   } | null>(null);
 
   const [shireibuTasksByRole, setShireibuTasksByRole] = React.useState<
-    Record<string, KohoTaskItem[]>
+    Record<string, PriorityTaskItem[]>
   >(() =>
     Object.fromEntries(SHIREIBU_TASK_ROLE_KEYS.map((k) => [k, []]))
-  );
-  const [shireibuTaskDrafts, setShireibuTaskDrafts] = React.useState<
-    Record<string, ShireibuTaskDraft>
-  >(() =>
-    Object.fromEntries(
-      SHIREIBU_TASK_ROLE_KEYS.map((k) => [k, { content: "", due: "" }])
-    )
   );
 
   const shireibuHref = React.useCallback(
@@ -326,8 +560,8 @@ export function OrganizationChart() {
         }
       }
       const bundled = localStorage.getItem(SHIREIBU_TASKS_STORAGE_KEY);
-      const base: Record<string, KohoTaskItem[]> = Object.fromEntries(
-        SHIREIBU_TASK_ROLE_KEYS.map((k) => [k, [] as KohoTaskItem[]])
+      const base: Record<string, PriorityTaskItem[]> = Object.fromEntries(
+        SHIREIBU_TASK_ROLE_KEYS.map((k) => [k, [] as PriorityTaskItem[]])
       );
       if (bundled) {
         const parsed: unknown = JSON.parse(bundled);
@@ -337,8 +571,8 @@ export function OrganizationChart() {
             const raw = o[key];
             if (Array.isArray(raw)) {
               base[key] = raw
-                .map(normalizeKohoTask)
-                .filter((x): x is KohoTaskItem => x !== null);
+                .map(normalizeShireibuStoredTask)
+                .filter((x): x is PriorityTaskItem => x !== null);
             }
           }
         }
@@ -349,8 +583,8 @@ export function OrganizationChart() {
           const parsed: unknown = JSON.parse(leg);
           if (Array.isArray(parsed)) {
             base["映画広報"] = parsed
-              .map(normalizeKohoTask)
-              .filter((x): x is KohoTaskItem => x !== null);
+              .map(normalizeShireibuStoredTask)
+              .filter((x): x is PriorityTaskItem => x !== null);
           }
         }
         setShireibuTasksByRole(base);
@@ -393,7 +627,7 @@ export function OrganizationChart() {
 
   React.useEffect(() => {
     if (!storageReady) return;
-    const out: Record<string, KohoTaskItem[]> = {};
+    const out: Record<string, PriorityTaskItem[]> = {};
     for (const key of SHIREIBU_TASK_ROLE_KEYS) {
       out[key] = shireibuTasksByRole[key] ?? [];
     }
@@ -437,14 +671,18 @@ export function OrganizationChart() {
   };
 
   const handleAddPriority = () => {
-    if (newPriority.trim() && newPriorityTime.trim()) {
-      setPriorityTasks([
-        ...priorityTasks,
-        { task: newPriority.trim(), time: newPriorityTime.trim(), done: false },
-      ]);
-      setNewPriority('');
-      setNewPriorityTime('');
+    const task = newPriority.trim();
+    const time = newPriorityTime.trim();
+    if (!task && !time) return;
+    setPriorityTasks([
+      ...priorityTasks,
+      { task, time, done: false },
+    ]);
+    if (task) {
+      setTaskHistory((h) => (h.includes(task) ? h : [...h, task]));
     }
+    setNewPriority("");
+    setNewPriorityTime("");
   };
 
   const handleDeletePriority = (index: number) => {
@@ -461,9 +699,9 @@ export function OrganizationChart() {
     };
     setPriorityTasks(updated);
     
-    // タスク名を履歴に追加（重複は避け��）
-    if (value.trim() && !taskHistory.includes(value.trim())) {
-      setTaskHistory([...taskHistory, value.trim()]);
+    const t = value.trim();
+    if (t) {
+      setTaskHistory((h) => (h.includes(t) ? h : [...h, t]));
     }
   };
 
@@ -514,70 +752,21 @@ export function OrganizationChart() {
     }
   };
 
-  const handleShireibuDraftChange = React.useCallback(
-    (roleKey: string, patch: Partial<ShireibuTaskDraft>) => {
-      setShireibuTaskDrafts((prev) => ({
-        ...prev,
-        [roleKey]: {
-          ...(prev[roleKey] ?? { content: "", due: "" }),
-          ...patch,
-        },
-      }));
-    },
-    []
-  );
-
-  const handleAddShireibuTask = (roleKey: string) => {
-    setShireibuTaskDrafts((d) => {
-      const draft = d[roleKey] ?? { content: "", due: "" };
-      const content = draft.content.trim();
-      if (!content) return d;
-      setShireibuTasksByRole((prev) => ({
-        ...prev,
-        [roleKey]: [
-          ...(prev[roleKey] ?? []),
-          {
-            id: newKohoTaskId(),
-            content,
-            due: draft.due.trim(),
-            done: false,
-          },
-        ],
-      }));
-      return { ...d, [roleKey]: { content: "", due: "" } };
-    });
-  };
-
-  const handleUpdateShireibuTask = (
-    roleKey: string,
-    id: string,
-    patch: Partial<Pick<KohoTaskItem, "content" | "due" | "done">>
-  ) => {
-    setShireibuTasksByRole((prev) => {
-      const list = prev[roleKey] ?? [];
-      return {
-        ...prev,
-        [roleKey]: list.map((t) => (t.id === id ? { ...t, ...patch } : t)),
-      };
-    });
-  };
-
-  const handleDeleteShireibuTask = (roleKey: string, id: string) => {
-    setShireibuTasksByRole((prev) => ({
-      ...prev,
-      [roleKey]: (prev[roleKey] ?? []).filter((t) => t.id !== id),
-    }));
-  };
-
-  const shireibuTaskPanel = (roleKey: string) => (
-    <ShireibuTaskPanel
-      roleKey={roleKey}
+  const shireibuPriorityPanel = (roleKey: string) => (
+    <ShireibuPriorityTasksPanel
+      title={roleKey}
       tasks={shireibuTasksByRole[roleKey] ?? []}
-      draft={shireibuTaskDrafts[roleKey] ?? { content: "", due: "" }}
-      onDraftChange={(patch) => handleShireibuDraftChange(roleKey, patch)}
-      onAdd={() => handleAddShireibuTask(roleKey)}
-      onUpdate={(id, patch) => handleUpdateShireibuTask(roleKey, id, patch)}
-      onDelete={(id) => handleDeleteShireibuTask(roleKey, id)}
+      setTaskList={(action) =>
+        setShireibuTasksByRole((prev) => ({
+          ...prev,
+          [roleKey]:
+            typeof action === "function"
+              ? action(prev[roleKey] ?? [])
+              : action,
+        }))
+      }
+      taskHistory={taskHistory}
+      setTaskHistory={setTaskHistory}
     />
   );
 
@@ -593,9 +782,9 @@ export function OrganizationChart() {
       {/* 組織図コンテンツ */}
       <div className="flex flex-col items-start space-y-16">
         {/* 司令本部の下に雑談部屋・気になること */}
-        <div className="flex flex-col gap-6 items-start w-full">
-          {/* 司令本部（映画統括＋分野別4リンク） */}
-          <div className="bg-gray-900 text-white px-8 py-6 rounded-lg shadow-lg min-w-[280px] max-w-4xl w-full sm:w-auto">
+        <div className="flex flex-col gap-6 items-stretch w-full">
+          {/* 司令本部（映画統括＋分野別4リンク）— 大画面では横に広げる */}
+          <div className="bg-gray-900 text-white px-6 py-6 sm:px-8 sm:py-6 lg:px-10 xl:px-12 rounded-lg shadow-lg w-full min-w-0 max-w-4xl md:max-w-6xl xl:max-w-7xl">
             <div className="text-2xl mb-1 tracking-wide text-center">司令本部</div>
             <p className="text-xs text-gray-400 text-center mb-1 tracking-wider">
               意思決定 · 分野から開く
@@ -620,9 +809,9 @@ export function OrganizationChart() {
               >
                 {shireibuTopLink.label}
               </a>
-              {shireibuTaskPanel(shireibuTopLink.label)}
-              <div className="flex gap-2 items-start">
-                <div className="flex min-w-0 flex-1 flex-col gap-2">
+              {shireibuPriorityPanel(shireibuTopLink.label)}
+              <div className="flex gap-2 lg:gap-5 xl:gap-6 items-start">
+                <div className="flex min-w-0 flex-1 flex-col gap-2 lg:gap-3">
                   <a
                     href={shireibuHref("映画編集")}
                     target="_blank"
@@ -639,7 +828,7 @@ export function OrganizationChart() {
                   >
                     映画編集
                   </a>
-                  {shireibuTaskPanel("映画編集")}
+                  {shireibuPriorityPanel("映画編集")}
                   <a
                     href={shireibuHref("映画撮影")}
                     target="_blank"
@@ -656,9 +845,9 @@ export function OrganizationChart() {
                   >
                     映画撮影
                   </a>
-                  {shireibuTaskPanel("映画撮影")}
+                  {shireibuPriorityPanel("映画撮影")}
                 </div>
-                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                <div className="flex min-w-0 flex-1 flex-col gap-2 lg:gap-3">
                   <a
                     href={shireibuHref("映画広報")}
                     target="_blank"
@@ -675,7 +864,7 @@ export function OrganizationChart() {
                   >
                     映画広報
                   </a>
-                  {shireibuTaskPanel("映画広報")}
+                  {shireibuPriorityPanel("映画広報")}
                   <a
                     href={shireibuHref("映画上映")}
                     target="_blank"
@@ -692,7 +881,7 @@ export function OrganizationChart() {
                   >
                     映画上映
                   </a>
-                  {shireibuTaskPanel("映画上映")}
+                  {shireibuPriorityPanel("映画上映")}
                 </div>
               </div>
             </div>
@@ -927,7 +1116,7 @@ export function OrganizationChart() {
                           e.preventDefault();
                           handleAddPriority();
                         }}
-                        placeholder="新しいタスクを追加..."
+                        placeholder="内容（任意）"
                         className="flex-1 bg-white px-3 py-2 rounded border border-red-300 focus:outline-none focus:border-red-500"
                         onClick={(e) => e.stopPropagation()}
                       />
@@ -940,7 +1129,7 @@ export function OrganizationChart() {
                           e.preventDefault();
                           handleAddPriority();
                         }}
-                        placeholder="時間..."
+                        placeholder="時間（任意）"
                         className="w-20 bg-white px-3 py-2 rounded border border-red-300 focus:outline-none focus:border-red-500"
                         onClick={(e) => e.stopPropagation()}
                       />
@@ -971,17 +1160,21 @@ export function OrganizationChart() {
                                   value={taskInputValue}
                                   onChange={(e) => setTaskInputValue(e.target.value)}
                                   onBlur={() => {
-                                    if (taskInputValue.trim()) {
-                                      handleUpdatePriority(index, taskInputValue, task.time);
-                                    }
+                                    handleUpdatePriority(
+                                      index,
+                                      taskInputValue.trim(),
+                                      task.time
+                                    );
                                     setEditingTaskIndex(null);
                                   }}
                                   onKeyDown={(e) => {
                                     if (!isEnterKeyCommit(e)) return;
                                     e.preventDefault();
-                                    if (taskInputValue.trim()) {
-                                      handleUpdatePriority(index, taskInputValue, task.time);
-                                    }
+                                    handleUpdatePriority(
+                                      index,
+                                      taskInputValue.trim(),
+                                      task.time
+                                    );
                                     setEditingTaskIndex(null);
                                   }}
                                   className="w-full bg-white px-2 py-1 rounded border border-red-300 focus:outline-none focus:border-red-500"
@@ -1018,9 +1211,13 @@ export function OrganizationChart() {
                                   setEditingTaskIndex(index);
                                   setEditingTimeIndex(null);
                                 }}
-                                className={`cursor-pointer hover:text-red-700 ${task.done ? "line-through text-gray-400" : ""}`}
+                                className={`cursor-pointer hover:text-red-700 min-h-[1.25rem] ${task.done ? "line-through text-gray-400" : ""}`}
                               >
-                                {task.task}
+                                {task.task ? (
+                                  task.task
+                                ) : (
+                                  <span className="text-gray-400">（内容なし）</span>
+                                )}
                               </div>
                             )}
                           </div>
@@ -1033,9 +1230,9 @@ export function OrganizationChart() {
                                   setEditingTimeIndex(editingTimeIndex === index ? null : index);
                                   setEditingTaskIndex(null);
                                 }}
-                                className={`text-red-600 hover:text-red-700 font-medium px-2 py-1 border border-red-300 rounded bg-red-50 ${task.done ? "line-through opacity-70" : ""}`}
+                                className={`text-red-600 hover:text-red-700 font-medium px-2 py-1 border border-red-300 rounded bg-red-50 min-w-[2.75rem] ${task.done ? "line-through opacity-70" : ""}`}
                               >
-                                {task.time}
+                                {task.time || "—"}
                               </button>
                               
                               {/* 時間選択ドロップダウン */}
@@ -1044,6 +1241,17 @@ export function OrganizationChart() {
                                   className="absolute right-0 mt-1 bg-white border-2 border-red-300 rounded-lg shadow-xl z-10 max-h-60 overflow-y-auto w-24"
                                   onClick={(e) => e.stopPropagation()}
                                 >
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleUpdatePriority(index, task.task, "");
+                                      setEditingTimeIndex(null);
+                                    }}
+                                    className="w-full text-left px-3 py-2 hover:bg-red-100 transition-colors text-sm text-gray-500 border-b border-red-100"
+                                  >
+                                    なし
+                                  </button>
                                   {timeOptions.map((time) => (
                                     <button
                                       key={time}
