@@ -30,6 +30,12 @@ const defaultPriorityTasks: PriorityTaskItem[] = [
 ];
 const defaultDailyTasks = ["毎日タスク1", "毎日タスク2", "毎日タスク3"];
 
+/** 司令本部：最上位の統括リンク（href は共有URL。別URLにしたい場合は右クリックで変更） */
+const shireibuTopLink = {
+  label: "司令部映画統括",
+  href: "https://chatgpt.com/g/g-p-691ecfa61b688191aff053276412376b-esientomoto/c/69cf0247-24a8-83aa-8d84-2762c83d6a7c",
+} as const;
+
 /** 司令本部：分野ごとの ChatGPT リンク（別URLにしたい項目だけ href を差し替え） */
 const shireibuLinks = [
   {
@@ -50,9 +56,10 @@ const shireibuLinks = [
   },
 ] as const;
 
-const SHIREIBU_DEFAULT_HREFS: Record<string, string> = Object.fromEntries(
-  shireibuLinks.map((l) => [l.label, l.href])
-);
+const SHIREIBU_DEFAULT_HREFS: Record<string, string> = Object.fromEntries([
+  [shireibuTopLink.label, shireibuTopLink.href],
+  ...shireibuLinks.map((l) => [l.label, l.href] as const),
+]);
 
 function isValidHttpUrl(s: string): boolean {
   const t = s.trim();
@@ -307,7 +314,7 @@ export function OrganizationChart() {
       <div className="flex flex-col items-start space-y-16">
         {/* 最上部：司令本部、雑談部屋、気になること枠 */}
         <div className="flex flex-wrap gap-6 items-start w-full">
-          {/* 司令本部（分野別4リンク） */}
+          {/* 司令本部（映画統括＋分野別4リンク） */}
           <div className="bg-gray-900 text-white px-8 py-6 rounded-lg shadow-lg min-w-[280px] max-w-md">
             <div className="text-2xl mb-1 tracking-wide text-center">司令本部</div>
             <p className="text-xs text-gray-400 text-center mb-1 tracking-wider">
@@ -316,26 +323,44 @@ export function OrganizationChart() {
             <p className="text-[10px] text-gray-500 text-center mb-3">
               右クリックでリンク先の変更・コピーなど
             </p>
-            <div className="grid grid-cols-2 gap-2">
-              {shireibuLinks.map(({ label }) => (
-                <a
-                  key={label}
-                  href={shireibuHref(label)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    setShireibuLinkMenu({
-                      label,
-                      x: e.clientX,
-                      y: e.clientY,
-                    });
-                  }}
-                  className="flex items-center justify-center text-center text-sm font-medium text-white bg-gray-800 border border-gray-600 rounded-lg px-3 py-3 hover:bg-gray-700 transition-colors"
-                >
-                  {label}
-                </a>
-              ))}
+            <div className="space-y-2">
+              <a
+                href={shireibuHref(shireibuTopLink.label)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setShireibuLinkMenu({
+                    label: shireibuTopLink.label,
+                    x: e.clientX,
+                    y: e.clientY,
+                  });
+                }}
+                className="flex w-full items-center justify-center text-center text-base font-semibold tracking-wide text-white bg-gray-800 border-2 border-amber-500/90 rounded-lg px-3 py-3.5 hover:bg-gray-700 hover:border-amber-400 transition-colors"
+              >
+                {shireibuTopLink.label}
+              </a>
+              <div className="grid grid-cols-2 gap-2">
+                {shireibuLinks.map(({ label }) => (
+                  <a
+                    key={label}
+                    href={shireibuHref(label)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setShireibuLinkMenu({
+                        label,
+                        x: e.clientX,
+                        y: e.clientY,
+                      });
+                    }}
+                    className="flex items-center justify-center text-center text-sm font-medium text-white bg-gray-800 border border-gray-600 rounded-lg px-3 py-3 hover:bg-gray-700 transition-colors"
+                  >
+                    {label}
+                  </a>
+                ))}
+              </div>
             </div>
           </div>
 
