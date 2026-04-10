@@ -185,13 +185,11 @@ function ShireibuPriorityTasksPanel({
 
   return (
     <div
-      className="bg-red-50 border-2 border-red-400 px-4 py-4 sm:px-6 sm:py-5 rounded-lg shadow-md min-w-0 w-full cursor-pointer text-left"
+      className="bg-red-50 border-2 border-red-400 px-8 py-6 rounded-lg shadow-md min-w-0 w-full cursor-pointer text-left"
       onClick={() => setIsEditing(true)}
     >
-      <div className="flex items-center justify-between mb-3 gap-2">
-        <div className="text-base sm:text-lg text-red-700 tracking-wide font-medium">
-          🎯 {title}
-        </div>
+      <div className="flex items-center justify-between mb-4 gap-2">
+        <div className="text-xl text-red-700 tracking-wide">🎯 {title}</div>
         {isEditing && (
           <button
             type="button"
@@ -205,9 +203,6 @@ function ShireibuPriorityTasksPanel({
           </button>
         )}
       </div>
-      <p className="text-[10px] text-red-600/80 mb-3 -mt-1">
-        映画『残すということ』
-      </p>
 
       {isEditing ? (
         <div
@@ -329,7 +324,7 @@ function ShireibuPriorityTasksPanel({
           {tasks.map((task, index) => (
             <div
               key={index}
-              className={`bg-white px-3 py-2 rounded border border-red-200 ${task.done ? "opacity-90" : ""}`}
+              className={`bg-white px-3 py-2 rounded border border-red-200 shadow-sm ${task.done ? "opacity-90" : ""}`}
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex-1 relative min-w-0">
@@ -1149,7 +1144,7 @@ export function OrganizationChart() {
                     {priorityTasks.map((task, index) => (
                       <div
                         key={index}
-                        className={`bg-white px-3 py-2 rounded border border-red-200 ${task.done ? "opacity-90" : ""}`}
+                        className={`bg-white px-3 py-2 rounded border border-red-200 shadow-sm ${task.done ? "opacity-90" : ""}`}
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex-1 relative min-w-0">
