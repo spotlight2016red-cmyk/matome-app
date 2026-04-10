@@ -95,6 +95,14 @@ function isValidHttpUrl(s: string): boolean {
   }
 }
 
+/** IME 変換確定の Enter では false（追加・確定処理を走らせない） */
+function isEnterKeyCommit(e: React.KeyboardEvent): boolean {
+  if (e.key !== "Enter" && e.key !== "NumpadEnter") return false;
+  if (e.nativeEvent.isComposing) return false;
+  if ((e.nativeEvent as KeyboardEvent).keyCode === 229) return false;
+  return true;
+}
+
 export function OrganizationChart() {
   const [isKairoExpanded, setIsKairoExpanded] = React.useState(false);
   const [isShikinExpanded, setIsShikinExpanded] = React.useState(false);
@@ -546,7 +554,9 @@ export function OrganizationChart() {
                         value={newKohoContent}
                         onChange={(e) => setNewKohoContent(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter") handleAddKohoTask();
+                          if (!isEnterKeyCommit(e)) return;
+                          e.preventDefault();
+                          handleAddKohoTask();
                         }}
                         placeholder="新しいタスクの内容"
                         className="w-full text-xs rounded px-2 py-1.5 border border-gray-600 bg-gray-900 text-gray-100 placeholder:text-gray-500"
@@ -683,11 +693,10 @@ export function OrganizationChart() {
                     type="text"
                     value={newMemo}
                     onChange={(e) => setNewMemo(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddMemo();
-                      }
+                    onKeyDown={(e) => {
+                      if (!isEnterKeyCommit(e)) return;
+                      e.preventDefault();
+                      handleAddMemo();
                     }}
                     placeholder="新しいメモを追加..."
                     className="flex-1 bg-white px-3 py-2 rounded border border-pink-300 focus:outline-none focus:border-pink-500"
@@ -813,11 +822,10 @@ export function OrganizationChart() {
                         type="text"
                         value={newPriority}
                         onChange={(e) => setNewPriority(e.target.value)}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleAddPriority();
-                          }
+                        onKeyDown={(e) => {
+                          if (!isEnterKeyCommit(e)) return;
+                          e.preventDefault();
+                          handleAddPriority();
                         }}
                         placeholder="新しいタスクを追加..."
                         className="flex-1 bg-white px-3 py-2 rounded border border-red-300 focus:outline-none focus:border-red-500"
@@ -827,11 +835,10 @@ export function OrganizationChart() {
                         type="text"
                         value={newPriorityTime}
                         onChange={(e) => setNewPriorityTime(e.target.value)}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleAddPriority();
-                          }
+                        onKeyDown={(e) => {
+                          if (!isEnterKeyCommit(e)) return;
+                          e.preventDefault();
+                          handleAddPriority();
                         }}
                         placeholder="時間..."
                         className="w-20 bg-white px-3 py-2 rounded border border-red-300 focus:outline-none focus:border-red-500"
@@ -869,13 +876,13 @@ export function OrganizationChart() {
                                     }
                                     setEditingTaskIndex(null);
                                   }}
-                                  onKeyPress={(e) => {
-                                    if (e.key === 'Enter') {
-                                      if (taskInputValue.trim()) {
-                                        handleUpdatePriority(index, taskInputValue, task.time);
-                                      }
-                                      setEditingTaskIndex(null);
+                                  onKeyDown={(e) => {
+                                    if (!isEnterKeyCommit(e)) return;
+                                    e.preventDefault();
+                                    if (taskInputValue.trim()) {
+                                      handleUpdatePriority(index, taskInputValue, task.time);
                                     }
+                                    setEditingTaskIndex(null);
                                   }}
                                   className="w-full bg-white px-2 py-1 rounded border border-red-300 focus:outline-none focus:border-red-500"
                                   onClick={(e) => e.stopPropagation()}
@@ -1025,11 +1032,10 @@ export function OrganizationChart() {
                         type="text"
                         value={newDaily}
                         onChange={(e) => setNewDaily(e.target.value)}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleAddDaily();
-                          }
+                        onKeyDown={(e) => {
+                          if (!isEnterKeyCommit(e)) return;
+                          e.preventDefault();
+                          handleAddDaily();
                         }}
                         placeholder="新しい習慣を追加..."
                         className="flex-1 bg-white px-3 py-2 rounded border border-blue-300 focus:outline-none focus:border-blue-500"
