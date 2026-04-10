@@ -23,10 +23,12 @@ const defaultMemoItems = ["メモ項目1", "メモ項目2", "メモ項目3"];
 
 type PriorityTaskItem = { task: string; time: string; done: boolean };
 
-/** 司令本部「映画広報」下 — 映画『残すということ』用タスク */
+/** 司令本部ロール別タスク（内容・期限・済） */
 type KohoTaskItem = { id: string; content: string; due: string; done: boolean };
 
-const KAIRO_KOHO_TASKS_STORAGE_KEY = "kairoNokotoniKohoTasks";
+const SHIREIBU_TASKS_STORAGE_KEY = "shireibuTasksByRole";
+/** 移行用（旧キー → 映画広報） */
+const LEGACY_KOHO_TASKS_STORAGE_KEY = "kairoNokotoniKohoTasks";
 
 function newKohoTaskId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -84,6 +86,11 @@ const SHIREIBU_DEFAULT_HREFS: Record<string, string> = Object.fromEntries([
   ...shireibuLinks.map((l) => [l.label, l.href] as const),
 ]);
 
+const SHIREIBU_TASK_ROLE_KEYS: readonly string[] = [
+  shireibuTopLink.label,
+  ...shireibuLinks.map((l) => l.label),
+];
+
 function isValidHttpUrl(s: string): boolean {
   const t = s.trim();
   if (!t) return false;
@@ -101,6 +108,124 @@ function isEnterKeyCommit(e: React.KeyboardEvent): boolean {
   if (e.nativeEvent.isComposing) return false;
   if ((e.nativeEvent as KeyboardEvent).keyCode === 229) return false;
   return true;
+}
+
+type ShireibuTaskDraft = { content: string; due: string };
+
+function ShireibuTaskPanel({
+  roleKey,
+  tasks,
+  draft,
+  onDraftChange,
+  onAdd,
+  onUpdate,
+  onDelete,
+}: {
+  roleKey: string;
+  tasks: KohoTaskItem[];
+  draft: ShireibuTaskDraft;
+  onDraftChange: (patch: Partial<ShireibuTaskDraft>) => void;
+  onAdd: () => void;
+  onUpdate: (
+    id: string,
+    patch: Partial<Pick<KohoTaskItem, "content" | "due" | "done">>
+  ) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <div
+      className="rounded-lg border border-gray-600 bg-gray-800/95 p-3 shadow-sm text-left"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="text-xs font-semibold text-gray-100 mb-2">
+        タスク
+        <span className="block text-[10px] font-normal text-gray-400 mt-0.5">
+          {roleKey}
+          <span className="block mt-0.5 text-gray-500">映画『残すということ』</span>
+        </span>
+      </div>
+      <div className="space-y-2 max-h-48 overflow-y-auto">
+        {tasks.length === 0 && (
+          <p className="text-[11px] text-gray-500 py-1">
+            下のフォームからタスクを追加できます
+          </p>
+        )}
+        {tasks.map((t) => (
+          <div
+            key={t.id}
+            className={`rounded border border-gray-600 bg-gray-900/60 p-2 space-y-1.5 ${t.done ? "opacity-75" : ""}`}
+          >
+            <div className="flex items-start gap-2">
+              <label className="flex flex-col items-center gap-0.5 shrink-0 pt-0.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={t.done}
+                  onChange={() => onUpdate(t.id, { done: !t.done })}
+                  className="size-3.5 rounded border-gray-500 bg-gray-900"
+                  aria-label="完了"
+                />
+                <span className="text-[9px] text-gray-400 leading-none">済</span>
+              </label>
+              <input
+                type="text"
+                value={t.content}
+                onChange={(e) => onUpdate(t.id, { content: e.target.value })}
+                className={`flex-1 min-w-0 text-xs rounded px-1.5 py-0.5 border border-gray-600 bg-gray-900 text-gray-100 focus:border-blue-400 focus:outline-none ${t.done ? "line-through text-gray-500" : ""}`}
+                placeholder="内容"
+              />
+              <button
+                type="button"
+                onClick={() => onDelete(t.id)}
+                className="shrink-0 text-red-400 hover:text-red-300 text-base leading-none px-0.5"
+                aria-label="削除"
+              >
+                ×
+              </button>
+            </div>
+            <div className="space-y-0.5">
+              <span className="text-[10px] text-gray-400">期限</span>
+              <input
+                type="date"
+                value={t.due}
+                onChange={(e) => onUpdate(t.id, { due: e.target.value })}
+                className="w-full text-[11px] rounded px-1.5 py-0.5 border border-gray-600 bg-gray-900 text-gray-200"
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 pt-2 border-t border-gray-600 space-y-2">
+        <input
+          type="text"
+          value={draft.content}
+          onChange={(e) => onDraftChange({ content: e.target.value })}
+          onKeyDown={(e) => {
+            if (!isEnterKeyCommit(e)) return;
+            e.preventDefault();
+            onAdd();
+          }}
+          placeholder="新しいタスクの内容"
+          className="w-full text-xs rounded px-2 py-1.5 border border-gray-600 bg-gray-900 text-gray-100 placeholder:text-gray-500"
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] text-gray-400 shrink-0">期限</span>
+          <input
+            type="date"
+            value={draft.due}
+            onChange={(e) => onDraftChange({ due: e.target.value })}
+            className="flex-1 min-w-[7rem] text-[11px] rounded px-1.5 py-0.5 border border-gray-600 bg-gray-900 text-gray-200"
+          />
+          <button
+            type="button"
+            onClick={onAdd}
+            className="shrink-0 text-xs bg-amber-600 text-white px-2.5 py-1 rounded hover:bg-amber-500"
+          >
+            追加
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function OrganizationChart() {
@@ -148,9 +273,18 @@ export function OrganizationChart() {
     y: number;
   } | null>(null);
 
-  const [kohoTasks, setKohoTasks] = React.useState<KohoTaskItem[]>([]);
-  const [newKohoContent, setNewKohoContent] = React.useState("");
-  const [newKohoDue, setNewKohoDue] = React.useState("");
+  const [shireibuTasksByRole, setShireibuTasksByRole] = React.useState<
+    Record<string, KohoTaskItem[]>
+  >(() =>
+    Object.fromEntries(SHIREIBU_TASK_ROLE_KEYS.map((k) => [k, []]))
+  );
+  const [shireibuTaskDrafts, setShireibuTaskDrafts] = React.useState<
+    Record<string, ShireibuTaskDraft>
+  >(() =>
+    Object.fromEntries(
+      SHIREIBU_TASK_ROLE_KEYS.map((k) => [k, { content: "", due: "" }])
+    )
+  );
 
   const shireibuHref = React.useCallback(
     (label: string) => shireibuOverrides[label] ?? SHIREIBU_DEFAULT_HREFS[label] ?? "#",
@@ -191,15 +325,35 @@ export function OrganizationChart() {
           setShireibuOverrides(parsed as Record<string, string>);
         }
       }
-      const koh = localStorage.getItem(KAIRO_KOHO_TASKS_STORAGE_KEY);
-      if (koh) {
-        const parsed: unknown = JSON.parse(koh);
-        if (Array.isArray(parsed)) {
-          const items = parsed
-            .map(normalizeKohoTask)
-            .filter((x): x is KohoTaskItem => x !== null);
-          setKohoTasks(items);
+      const bundled = localStorage.getItem(SHIREIBU_TASKS_STORAGE_KEY);
+      const base: Record<string, KohoTaskItem[]> = Object.fromEntries(
+        SHIREIBU_TASK_ROLE_KEYS.map((k) => [k, [] as KohoTaskItem[]])
+      );
+      if (bundled) {
+        const parsed: unknown = JSON.parse(bundled);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          const o = parsed as Record<string, unknown>;
+          for (const key of SHIREIBU_TASK_ROLE_KEYS) {
+            const raw = o[key];
+            if (Array.isArray(raw)) {
+              base[key] = raw
+                .map(normalizeKohoTask)
+                .filter((x): x is KohoTaskItem => x !== null);
+            }
+          }
         }
+        setShireibuTasksByRole(base);
+      } else {
+        const leg = localStorage.getItem(LEGACY_KOHO_TASKS_STORAGE_KEY);
+        if (leg) {
+          const parsed: unknown = JSON.parse(leg);
+          if (Array.isArray(parsed)) {
+            base["映画広報"] = parsed
+              .map(normalizeKohoTask)
+              .filter((x): x is KohoTaskItem => x !== null);
+          }
+        }
+        setShireibuTasksByRole(base);
       }
     } catch {
       /* ignore invalid JSON */
@@ -239,11 +393,17 @@ export function OrganizationChart() {
 
   React.useEffect(() => {
     if (!storageReady) return;
-    localStorage.setItem(
-      KAIRO_KOHO_TASKS_STORAGE_KEY,
-      JSON.stringify(kohoTasks)
-    );
-  }, [kohoTasks, storageReady]);
+    const out: Record<string, KohoTaskItem[]> = {};
+    for (const key of SHIREIBU_TASK_ROLE_KEYS) {
+      out[key] = shireibuTasksByRole[key] ?? [];
+    }
+    localStorage.setItem(SHIREIBU_TASKS_STORAGE_KEY, JSON.stringify(out));
+    try {
+      localStorage.removeItem(LEGACY_KOHO_TASKS_STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
+  }, [shireibuTasksByRole, storageReady]);
 
   React.useEffect(() => {
     if (!shireibuLinkMenu) return;
@@ -354,34 +514,72 @@ export function OrganizationChart() {
     }
   };
 
-  const handleAddKohoTask = () => {
-    const content = newKohoContent.trim();
-    if (!content) return;
-    setKohoTasks((prev) => [
-      ...prev,
-      {
-        id: newKohoTaskId(),
-        content,
-        due: newKohoDue.trim(),
-        done: false,
-      },
-    ]);
-    setNewKohoContent("");
-    setNewKohoDue("");
+  const handleShireibuDraftChange = React.useCallback(
+    (roleKey: string, patch: Partial<ShireibuTaskDraft>) => {
+      setShireibuTaskDrafts((prev) => ({
+        ...prev,
+        [roleKey]: {
+          ...(prev[roleKey] ?? { content: "", due: "" }),
+          ...patch,
+        },
+      }));
+    },
+    []
+  );
+
+  const handleAddShireibuTask = (roleKey: string) => {
+    setShireibuTaskDrafts((d) => {
+      const draft = d[roleKey] ?? { content: "", due: "" };
+      const content = draft.content.trim();
+      if (!content) return d;
+      setShireibuTasksByRole((prev) => ({
+        ...prev,
+        [roleKey]: [
+          ...(prev[roleKey] ?? []),
+          {
+            id: newKohoTaskId(),
+            content,
+            due: draft.due.trim(),
+            done: false,
+          },
+        ],
+      }));
+      return { ...d, [roleKey]: { content: "", due: "" } };
+    });
   };
 
-  const handleUpdateKohoTask = (
+  const handleUpdateShireibuTask = (
+    roleKey: string,
     id: string,
     patch: Partial<Pick<KohoTaskItem, "content" | "due" | "done">>
   ) => {
-    setKohoTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...patch } : t))
-    );
+    setShireibuTasksByRole((prev) => {
+      const list = prev[roleKey] ?? [];
+      return {
+        ...prev,
+        [roleKey]: list.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+      };
+    });
   };
 
-  const handleDeleteKohoTask = (id: string) => {
-    setKohoTasks((prev) => prev.filter((t) => t.id !== id));
+  const handleDeleteShireibuTask = (roleKey: string, id: string) => {
+    setShireibuTasksByRole((prev) => ({
+      ...prev,
+      [roleKey]: (prev[roleKey] ?? []).filter((t) => t.id !== id),
+    }));
   };
+
+  const shireibuTaskPanel = (roleKey: string) => (
+    <ShireibuTaskPanel
+      roleKey={roleKey}
+      tasks={shireibuTasksByRole[roleKey] ?? []}
+      draft={shireibuTaskDrafts[roleKey] ?? { content: "", due: "" }}
+      onDraftChange={(patch) => handleShireibuDraftChange(roleKey, patch)}
+      onAdd={() => handleAddShireibuTask(roleKey)}
+      onUpdate={(id, patch) => handleUpdateShireibuTask(roleKey, id, patch)}
+      onDelete={(id) => handleDeleteShireibuTask(roleKey, id)}
+    />
+  );
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -394,10 +592,10 @@ export function OrganizationChart() {
 
       {/* 組織図コンテンツ */}
       <div className="flex flex-col items-start space-y-16">
-        {/* 最上部：司令本部、雑談部屋、気になること枠 */}
-        <div className="flex flex-wrap gap-6 items-start w-full">
+        {/* 司令本部の下に雑談部屋・気になること */}
+        <div className="flex flex-col gap-6 items-start w-full">
           {/* 司令本部（映画統括＋分野別4リンク） */}
-          <div className="bg-gray-900 text-white px-8 py-6 rounded-lg shadow-lg min-w-[280px] max-w-xl">
+          <div className="bg-gray-900 text-white px-8 py-6 rounded-lg shadow-lg min-w-[280px] max-w-4xl w-full sm:w-auto">
             <div className="text-2xl mb-1 tracking-wide text-center">司令本部</div>
             <p className="text-xs text-gray-400 text-center mb-1 tracking-wider">
               意思決定 · 分野から開く
@@ -422,6 +620,7 @@ export function OrganizationChart() {
               >
                 {shireibuTopLink.label}
               </a>
+              {shireibuTaskPanel(shireibuTopLink.label)}
               <div className="flex gap-2 items-start">
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
                   <a
@@ -440,6 +639,7 @@ export function OrganizationChart() {
                   >
                     映画編集
                   </a>
+                  {shireibuTaskPanel("映画編集")}
                   <a
                     href={shireibuHref("映画撮影")}
                     target="_blank"
@@ -456,6 +656,7 @@ export function OrganizationChart() {
                   >
                     映画撮影
                   </a>
+                  {shireibuTaskPanel("映画撮影")}
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
                   <a
@@ -474,111 +675,7 @@ export function OrganizationChart() {
                   >
                     映画広報
                   </a>
-                  <div
-                    className="rounded-lg border border-gray-600 bg-gray-800/95 p-3 shadow-sm text-left"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="text-xs font-semibold text-gray-100 mb-2">
-                      広報タスク
-                      <span className="block text-[10px] font-normal text-gray-400 mt-0.5">
-                        映画『残すということ』
-                      </span>
-                    </div>
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {kohoTasks.length === 0 && (
-                        <p className="text-[11px] text-gray-500 py-1">
-                          下のフォームからタスクを追加できます
-                        </p>
-                      )}
-                      {kohoTasks.map((t) => (
-                        <div
-                          key={t.id}
-                          className={`rounded border border-gray-600 bg-gray-900/60 p-2 space-y-1.5 ${t.done ? "opacity-75" : ""}`}
-                        >
-                          <div className="flex items-start gap-2">
-                            <label className="flex flex-col items-center gap-0.5 shrink-0 pt-0.5 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={t.done}
-                                onChange={() =>
-                                  handleUpdateKohoTask(t.id, {
-                                    done: !t.done,
-                                  })
-                                }
-                                className="size-3.5 rounded border-gray-500 bg-gray-900"
-                                aria-label="完了"
-                              />
-                              <span className="text-[9px] text-gray-400 leading-none">
-                                済
-                              </span>
-                            </label>
-                            <input
-                              type="text"
-                              value={t.content}
-                              onChange={(e) =>
-                                handleUpdateKohoTask(t.id, {
-                                  content: e.target.value,
-                                })
-                              }
-                              className={`flex-1 min-w-0 text-xs rounded px-1.5 py-0.5 border border-gray-600 bg-gray-900 text-gray-100 focus:border-blue-400 focus:outline-none ${t.done ? "line-through text-gray-500" : ""}`}
-                              placeholder="内容"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteKohoTask(t.id)}
-                              className="shrink-0 text-red-400 hover:text-red-300 text-base leading-none px-0.5"
-                              aria-label="削除"
-                            >
-                              ×
-                            </button>
-                          </div>
-                          <div className="space-y-0.5">
-                            <span className="text-[10px] text-gray-400">期限</span>
-                            <input
-                              type="date"
-                              value={t.due}
-                              onChange={(e) =>
-                                handleUpdateKohoTask(t.id, {
-                                  due: e.target.value,
-                                })
-                              }
-                              className="w-full text-[11px] rounded px-1.5 py-0.5 border border-gray-600 bg-gray-900 text-gray-200"
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-3 pt-2 border-t border-gray-600 space-y-2">
-                      <input
-                        type="text"
-                        value={newKohoContent}
-                        onChange={(e) => setNewKohoContent(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (!isEnterKeyCommit(e)) return;
-                          e.preventDefault();
-                          handleAddKohoTask();
-                        }}
-                        placeholder="新しいタスクの内容"
-                        className="w-full text-xs rounded px-2 py-1.5 border border-gray-600 bg-gray-900 text-gray-100 placeholder:text-gray-500"
-                      />
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[10px] text-gray-400 shrink-0">期限</span>
-                        <input
-                          type="date"
-                          value={newKohoDue}
-                          onChange={(e) => setNewKohoDue(e.target.value)}
-                          className="flex-1 min-w-[7rem] text-[11px] rounded px-1.5 py-0.5 border border-gray-600 bg-gray-900 text-gray-200"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleAddKohoTask}
-                          className="shrink-0 text-xs bg-amber-600 text-white px-2.5 py-1 rounded hover:bg-amber-500"
-                        >
-                          追加
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                  {shireibuTaskPanel("映画広報")}
                   <a
                     href={shireibuHref("映画上映")}
                     target="_blank"
@@ -595,11 +692,13 @@ export function OrganizationChart() {
                   >
                     映画上映
                   </a>
+                  {shireibuTaskPanel("映画上映")}
                 </div>
               </div>
             </div>
           </div>
 
+          <div className="flex flex-wrap gap-6 items-start w-full">
           {/* 雑談部屋（レベル別4リンク） */}
           <div className="bg-yellow-100 border-2 border-yellow-400 px-8 py-6 rounded-lg shadow-md min-w-[280px] max-w-md hover:shadow-lg transition-shadow">
             <div className="text-xl text-yellow-800 tracking-wide mb-1 text-center">
@@ -720,6 +819,7 @@ export function OrganizationChart() {
                 ))}
               </div>
             )}
+          </div>
           </div>
         </div>
 
