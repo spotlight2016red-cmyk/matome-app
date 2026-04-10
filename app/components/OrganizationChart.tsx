@@ -185,11 +185,11 @@ function ShireibuPriorityTasksPanel({
 
   return (
     <div
-      className="bg-red-50 border-2 border-red-400 px-8 py-6 rounded-lg shadow-md min-w-0 w-full cursor-pointer text-left"
+      className="bg-green-50 border-2 border-green-400 px-8 py-6 rounded-lg shadow-md min-w-0 w-full cursor-pointer text-left"
       onClick={() => setIsEditing(true)}
     >
       <div className="flex items-center justify-between mb-4 gap-2">
-        <div className="text-xl text-red-700 tracking-wide">🎯 {title}</div>
+        <div className="text-xl text-green-800 tracking-wide">🎯 {title}</div>
         {isEditing && (
           <button
             type="button"
@@ -197,7 +197,7 @@ function ShireibuPriorityTasksPanel({
               e.stopPropagation();
               setIsEditing(false);
             }}
-            className="text-xs bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded shrink-0"
+            className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded shrink-0"
           >
             完了
           </button>
@@ -217,7 +217,7 @@ function ShireibuPriorityTasksPanel({
                 onChange={(e) =>
                   updateTask(index, e.target.value, task.time)
                 }
-                className="flex-1 min-w-[8rem] bg-white px-3 py-2 rounded border border-red-300 focus:outline-none focus:border-red-500"
+                className="flex-1 min-w-[8rem] bg-white px-3 py-2 rounded border border-green-300 focus:outline-none focus:border-green-500"
                 onClick={(e) => e.stopPropagation()}
               />
               <div className="relative">
@@ -227,7 +227,7 @@ function ShireibuPriorityTasksPanel({
                   onChange={(e) =>
                     updateTask(index, task.task, e.target.value)
                   }
-                  className="w-20 bg-white px-3 py-2 rounded border border-red-300 focus:outline-none focus:border-red-500"
+                  className="w-20 bg-white px-3 py-2 rounded border border-green-300 focus:outline-none focus:border-green-500"
                   onClick={(e) => e.stopPropagation()}
                 />
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -256,7 +256,7 @@ function ShireibuPriorityTasksPanel({
                   type="checkbox"
                   checked={task.done}
                   onChange={() => toggleDone(index)}
-                  className="size-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                  className="size-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
                   onClick={(e) => e.stopPropagation()}
                   aria-label="完了したらチェック"
                 />
@@ -268,7 +268,7 @@ function ShireibuPriorityTasksPanel({
                   e.stopPropagation();
                   handleDelete(index);
                 }}
-                className="text-red-600 hover:text-red-800 font-bold"
+                className="text-green-700 hover:text-green-900 font-bold"
               >
                 ×
               </button>
@@ -285,7 +285,7 @@ function ShireibuPriorityTasksPanel({
                 handleAdd();
               }}
               placeholder="内容（任意）"
-              className="flex-1 min-w-[8rem] bg-white px-3 py-2 rounded border border-red-300 focus:outline-none focus:border-red-500"
+              className="flex-1 min-w-[8rem] bg-white px-3 py-2 rounded border border-green-300 focus:outline-none focus:border-green-500"
               onClick={(e) => e.stopPropagation()}
             />
             <input
@@ -298,7 +298,7 @@ function ShireibuPriorityTasksPanel({
                 handleAdd();
               }}
               placeholder="時間（任意）"
-              className="w-20 bg-white px-3 py-2 rounded border border-red-300 focus:outline-none focus:border-red-500"
+              className="w-20 bg-white px-3 py-2 rounded border border-green-300 focus:outline-none focus:border-green-500"
               onClick={(e) => e.stopPropagation()}
             />
             <button
@@ -324,7 +324,7 @@ function ShireibuPriorityTasksPanel({
           {tasks.map((task, index) => (
             <div
               key={index}
-              className={`bg-white px-3 py-2 rounded border border-red-200 shadow-sm ${task.done ? "opacity-90" : ""}`}
+              className={`bg-white px-3 py-2 rounded border border-green-200 shadow-sm ${task.done ? "opacity-90" : ""}`}
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex-1 relative min-w-0">
@@ -344,12 +344,12 @@ function ShireibuPriorityTasksPanel({
                           updateTask(index, taskInputValue.trim(), task.time);
                           setEditingTaskIndex(null);
                         }}
-                        className="w-full bg-white px-2 py-1 rounded border border-red-300 focus:outline-none focus:border-red-500"
+                        className="w-full bg-white px-2 py-1 rounded border border-green-300 focus:outline-none focus:border-green-500"
                         onClick={(e) => e.stopPropagation()}
                         autoFocus
                       />
                       {taskHistory.length > 0 && taskInputValue.length > 0 && (
-                        <div className="absolute left-0 right-0 mt-1 bg-white border-2 border-red-300 rounded-lg shadow-xl z-20 max-h-48 overflow-y-auto">
+                        <div className="absolute left-0 right-0 mt-1 bg-white border-2 border-green-300 rounded-lg shadow-xl z-20 max-h-48 overflow-y-auto">
                           {taskHistory
                             .filter((h) =>
                               h
@@ -366,7 +366,7 @@ function ShireibuPriorityTasksPanel({
                                   updateTask(index, h, task.time);
                                   setEditingTaskIndex(null);
                                 }}
-                                className="w-full text-left px-3 py-2 hover:bg-red-100 transition-colors text-sm"
+                                className="w-full text-left px-3 py-2 hover:bg-green-100 transition-colors text-sm"
                               >
                                 {h}
                               </button>
@@ -382,7 +382,7 @@ function ShireibuPriorityTasksPanel({
                         setEditingTaskIndex(index);
                         setEditingTimeIndex(null);
                       }}
-                      className={`cursor-pointer hover:text-red-700 min-h-[1.25rem] ${task.done ? "line-through text-gray-400" : ""}`}
+                      className={`cursor-pointer hover:text-green-800 min-h-[1.25rem] ${task.done ? "line-through text-gray-400" : ""}`}
                     >
                       {task.task ? (
                         task.task
@@ -403,13 +403,13 @@ function ShireibuPriorityTasksPanel({
                         );
                         setEditingTaskIndex(null);
                       }}
-                      className={`text-red-600 hover:text-red-700 font-medium px-2 py-1 border border-red-300 rounded bg-red-50 min-w-[2.75rem] ${task.done ? "line-through opacity-70" : ""}`}
+                      className={`text-green-700 hover:text-green-800 font-medium px-2 py-1 border border-green-300 rounded bg-green-50 min-w-[2.75rem] ${task.done ? "line-through opacity-70" : ""}`}
                     >
                       {task.time || "—"}
                     </button>
                     {editingTimeIndex === index && (
                       <div
-                        className="absolute right-0 mt-1 bg-white border-2 border-red-300 rounded-lg shadow-xl z-10 max-h-60 overflow-y-auto w-24"
+                        className="absolute right-0 mt-1 bg-white border-2 border-green-300 rounded-lg shadow-xl z-10 max-h-60 overflow-y-auto w-24"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <button
@@ -419,7 +419,7 @@ function ShireibuPriorityTasksPanel({
                             updateTask(index, task.task, "");
                             setEditingTimeIndex(null);
                           }}
-                          className="w-full text-left px-3 py-2 hover:bg-red-100 transition-colors text-sm text-gray-500 border-b border-red-100"
+                          className="w-full text-left px-3 py-2 hover:bg-green-100 transition-colors text-sm text-gray-500 border-b border-green-100"
                         >
                           なし
                         </button>
@@ -432,7 +432,7 @@ function ShireibuPriorityTasksPanel({
                               updateTask(index, task.task, time);
                               setEditingTimeIndex(null);
                             }}
-                            className="w-full text-left px-3 py-2 hover:bg-red-100 transition-colors text-sm"
+                            className="w-full text-left px-3 py-2 hover:bg-green-100 transition-colors text-sm"
                           >
                             {time}
                           </button>
@@ -448,7 +448,7 @@ function ShireibuPriorityTasksPanel({
                       type="checkbox"
                       checked={task.done}
                       onChange={() => toggleDone(index)}
-                      className="size-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                      className="size-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
                       onClick={(e) => e.stopPropagation()}
                       aria-label="完了したらチェック"
                     />
