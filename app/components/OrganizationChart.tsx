@@ -774,6 +774,53 @@ export function OrganizationChart() {
         <p className="text-gray-500">Organization Dashboard</p>
       </div>
 
+      {/* 理念（常時表示） */}
+      <div className="mb-12">
+        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm px-6 py-6 sm:px-8 sm:py-7">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div className="text-lg sm:text-xl font-semibold tracking-wide text-gray-900">
+              理念
+            </div>
+            <div className="text-[11px] text-gray-500 shrink-0">
+              いつでも立ち返る言葉
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:gap-5">
+            <div className="rounded-xl bg-gray-50 border border-gray-200 px-4 py-4">
+              <div className="text-xs font-semibold text-gray-600 mb-1">
+                1. 自分の願い
+              </div>
+              <div className="text-sm sm:text-base text-gray-900 leading-relaxed">
+                自然な自分で生きられる人が増えること。
+                <br />
+                その結果として、周りとの関係や、社会の空気まで変わっていくこと。
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-gray-50 border border-gray-200 px-4 py-4">
+              <div className="text-xs font-semibold text-gray-600 mb-1">
+                2. 自分の役割
+              </div>
+              <div className="text-sm sm:text-base text-gray-900 leading-relaxed">
+                オーダーメイド型で、人と流れを設計する人
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-gray-50 border border-gray-200 px-4 py-4">
+              <div className="text-xs font-semibold text-gray-600 mb-1">
+                3. 自分の働き方
+              </div>
+              <div className="text-sm sm:text-base text-gray-900 leading-relaxed">
+                全体像を捉え、本質を言葉にし、流れと順番を設計する働き方。
+                <br />
+                全部を背負うのではなく、芯を持ち、必要な人と組みながら形にしていく。
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* 組織図コンテンツ */}
       <div className="flex flex-col items-start space-y-16">
         {/* 司令本部の下に雑談部屋・気になること */}

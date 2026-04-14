@@ -48,6 +48,7 @@ GitHub の [Commits](https://github.com/spotlight2016red-cmyk/matome-app/commits
 | 2026-04 | IME 変換中の Enter で確定しない | `98f0b17` |
 | 2026-04 | 雑談をレベル別 ChatGPT 4 本に分割 | `5d348bf` |
 | 2026-04 | Figma 組織図の Next.js 統合・SSR 安全な保存 | `61d8a6e` |
+| 2026-04 | ヘッダー直下に「理念」カードを常時表示 | （後続コミット） |
 
 ---
 
