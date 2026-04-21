@@ -3,9 +3,19 @@
 import * as React from "react";
 import { STATE_CHECK_QUESTIONS } from "../_lib/questions";
 import { computeStateCheck, isAllAnswered } from "../_lib/logic";
-import type { AnswerMap, QuestionOptionId } from "../_lib/types";
+import { deriveTrends } from "../_lib/trends";
+import { loadStateCheckHistory, saveStateCheckHistory } from "../_lib/storage";
+import type {
+  AnswerMap,
+  QuestionOptionId,
+  StateCheckHistoryEntryV1,
+  StateCheckSignals,
+} from "../_lib/types";
 import { QuestionCard } from "./QuestionCard";
 import { ResultCard } from "./ResultCard";
+import { InsightEditor } from "./InsightEditor";
+import { HistoryList } from "./HistoryList";
+import { TrendsPanel } from "./TrendsPanel";
 
 function answeredCount(answers: AnswerMap) {
   return STATE_CHECK_QUESTIONS.reduce(
@@ -17,6 +27,8 @@ function answeredCount(answers: AnswerMap) {
 export function StateCheckClient() {
   const [answers, setAnswers] = React.useState<AnswerMap>({});
   const [mode, setMode] = React.useState<"form" | "result">("form");
+  const [memo, setMemo] = React.useState("");
+  const [history, setHistory] = React.useState<StateCheckHistoryEntryV1[]>([]);
 
   const allAnswered = isAllAnswered(answers);
   const done = answeredCount(answers);
@@ -25,6 +37,12 @@ export function StateCheckClient() {
     if (mode !== "result") return null;
     return computeStateCheck(answers);
   }, [answers, mode]);
+
+  React.useEffect(() => {
+    setHistory(loadStateCheckHistory());
+  }, []);
+
+  const trends = React.useMemo(() => deriveTrends(history), [history]);
 
   const handlePick = React.useCallback(
     (questionId: string, optionId: QuestionOptionId) => {
@@ -42,7 +60,36 @@ export function StateCheckClient() {
   const handleReset = () => {
     setAnswers({});
     setMode("form");
+    setMemo("");
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleSaveThisRun = () => {
+    if (!computation) return;
+    const signals = computation.debug.signals as StateCheckSignals;
+    const entry: StateCheckHistoryEntryV1 = {
+      version: 1,
+      id:
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}_${Math.random().toString(16).slice(2)}`,
+      createdAt: new Date().toISOString(),
+      resultId: computation.debug.chosenId,
+      resultName: computation.result.name,
+      scores: computation.scores,
+      answers,
+      signals,
+      memo: memo.trim(),
+    };
+    const next = [entry, ...history].slice(0, 100);
+    saveStateCheckHistory(next);
+    setHistory(next);
+  };
+
+  const handleClearHistory = () => {
+    const next: StateCheckHistoryEntryV1[] = [];
+    saveStateCheckHistory(next);
+    setHistory(next);
   };
 
   return (
@@ -65,6 +112,20 @@ export function StateCheckClient() {
       {mode === "result" && computation ? (
         <div className="space-y-8">
           <ResultCard computation={computation} onReset={handleReset} />
+
+          <InsightEditor
+            value={memo}
+            onChange={setMemo}
+            onSave={handleSaveThisRun}
+            disabled={memo.trim().length === 0}
+          />
+
+          <TrendsPanel
+            recentTendencies={trends.recentTendencies}
+            recoveryStyles={trends.recoveryStyles}
+          />
+
+          <HistoryList history={history} onClear={handleClearHistory} />
         </div>
       ) : (
         <>

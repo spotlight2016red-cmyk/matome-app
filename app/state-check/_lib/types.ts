@@ -57,3 +57,24 @@ export type StateCheckResult = {
   quickActions: readonly string[];
 };
 
+export type StateCheckSignals = {
+  moneyAnxiety: boolean;
+  relationshipPressure: boolean;
+  lowEnergy: boolean;
+  optionsTooMany: boolean;
+  suppressHonesty: boolean;
+  meaningLow: boolean;
+};
+
+export type StateCheckHistoryEntryV1 = {
+  version: 1;
+  id: string;
+  createdAt: string; // ISO
+  resultId: StateCheckResultId;
+  resultName: string;
+  scores: AxisScores;
+  answers: AnswerMap;
+  signals: StateCheckSignals;
+  memo: string;
+};
+
