@@ -17,7 +17,7 @@ export async function listDiagnosisRuns(params?: { limit?: number }) {
   const sb = await supabaseServer();
   const { data, error } = await sb
     .from("diagnosis_runs")
-    .select("id, created_at, result_type, note_text, propulsion_score, fatigue_score, confusion_score, recovery_score, heat_score")
+    .select("id, created_at, day_key, run_kind, result_type, note_text, propulsion_score, fatigue_score, confusion_score, recovery_score, heat_score")
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw new Error(error.message);

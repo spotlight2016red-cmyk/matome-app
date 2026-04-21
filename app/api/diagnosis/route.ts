@@ -42,6 +42,11 @@ export async function POST(request: Request) {
 
     const created = await createDiagnosisRun({
       user_id: userId,
+      run_kind:
+        body.run_kind === "morning" || body.run_kind === "night"
+          ? body.run_kind
+          : "extra",
+      day_key: typeof body.day_key === "string" ? body.day_key : undefined,
       result_type: String(body.result_type),
       propulsion_score: Number(body.propulsion_score),
       fatigue_score: Number(body.fatigue_score),

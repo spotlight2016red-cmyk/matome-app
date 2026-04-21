@@ -1,5 +1,7 @@
 export type DiagnosisRunInsert = {
   user_id?: string | null;
+  run_kind?: "morning" | "extra" | "night";
+  day_key?: string; // YYYY-MM-DD (castable to date)
   result_type: string;
   propulsion_score: number;
   fatigue_score: number;
@@ -19,6 +21,20 @@ export type DiagnosisRunInsert = {
 export type DiagnosisRunRow = DiagnosisRunInsert & {
   id: string;
   created_at: string;
+};
+
+export type DaySummaryInsert = {
+  user_id?: string | null;
+  day_key: string; // YYYY-MM-DD
+  drift_text?: string | null;
+  recovered_text?: string | null;
+  tomorrow_step_text?: string | null;
+};
+
+export type DaySummaryRow = DaySummaryInsert & {
+  id: string;
+  created_at: string;
+  updated_at: string;
 };
 
 export type GoalMapInsert = {

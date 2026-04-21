@@ -21,6 +21,9 @@ export function StateCheckClient() {
   const [answers, setAnswers] = React.useState<AnswerMap>({});
   const [mode, setMode] = React.useState<"form" | "result">("form");
   const [memo, setMemo] = React.useState("");
+  const [runKind, setRunKind] = React.useState<"morning" | "extra" | "night">(
+    "morning"
+  );
   const [history, setHistory] = React.useState<DiagnosisRunSummary[]>([]);
   const [trendState, setTrendState] = React.useState<{
     recentTendencies: string[];
@@ -89,6 +92,7 @@ export function StateCheckClient() {
     setAnswers({});
     setMode("form");
     setMemo("");
+    setRunKind("morning");
     setSaveState({ kind: "idle" });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -98,6 +102,7 @@ export function StateCheckClient() {
     setSaveState({ kind: "saving" });
     try {
       const payload = {
+        run_kind: runKind,
         result_type: computation.result.name,
         propulsion_score: computation.scores.propulsion,
         fatigue_score: computation.scores.exhaustion,
@@ -153,6 +158,40 @@ export function StateCheckClient() {
       {mode === "result" && computation ? (
         <div className="space-y-8">
           <ResultCard computation={computation} onReset={handleReset} />
+
+          <section className="rounded-2xl border border-gray-200 bg-white shadow-sm px-6 py-6">
+            <div className="text-xs text-gray-500 mb-1">利用タイミング</div>
+            <div className="text-sm text-gray-700 mb-3">
+              午前のチェック（基本）/ 気になった時（任意）/ 夜の振り返りメモ（軽め）
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {(
+                [
+                  ["morning", "午前チェック"],
+                  ["extra", "追加チェック"],
+                  ["night", "夜メモ"],
+                ] as const
+              ).map(([k, label]) => {
+                const selected = runKind === k;
+                return (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setRunKind(k)}
+                    className={[
+                      "rounded-xl border px-3 py-2 text-sm font-semibold",
+                      selected
+                        ? "border-gray-900 bg-gray-900 text-white"
+                        : "border-gray-200 bg-white text-gray-900 hover:bg-gray-50",
+                    ].join(" ")}
+                    aria-pressed={selected}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
 
           <InsightEditor
             value={memo}

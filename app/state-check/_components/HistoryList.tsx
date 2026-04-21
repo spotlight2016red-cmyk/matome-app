@@ -24,6 +24,8 @@ function memoSnippet(memo: string) {
 export type DiagnosisRunSummary = {
   id: string;
   created_at: string;
+  day_key?: string;
+  run_kind?: string;
   result_type: string;
   note_text: string | null;
   propulsion_score: number;
