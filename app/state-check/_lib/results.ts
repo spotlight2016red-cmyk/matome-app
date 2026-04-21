@@ -10,6 +10,7 @@ export const STATE_CHECK_RESULTS: Record<StateCheckResultId, StateCheckResult> =
       "◎ 意味 × ○ 整理 × ○ 行動明確 × ○ 信頼関係 ＝ 前進しやすい状態",
     likely: ["行動が進む", "周囲を巻き込みやすい", "発信や提案に力が乗る"],
     nextStep: "迷う前に、今日の一歩を具体化する",
+    quickActions: ["今日終える1件を決める", "案を3つまでに絞る"],
   },
   "focus-breakthrough": {
     id: "focus-breakthrough",
@@ -19,6 +20,7 @@ export const STATE_CHECK_RESULTS: Record<StateCheckResultId, StateCheckResult> =
     formula: "◎ 目的共有 × ○ 役割明確 × △ 適度な緊張感 ＝ 集中しやすい状態",
     likely: ["現場で力を発揮しやすい", "判断が早くなる", "短期間で結果が出やすい"],
     nextStep: "今いちばん成果につながる1件に集中する",
+    quickActions: ["時間をブロックする", "雑務を後回しにする"],
   },
   "stable-build": {
     id: "stable-build",
@@ -28,6 +30,7 @@ export const STATE_CHECK_RESULTS: Record<StateCheckResultId, StateCheckResult> =
     formula: "○ 安心感 × ○ 整理 × ○ 小さな行動 ＝ 安定しながら伸びる状態",
     likely: ["無理なく継続できる", "小さな改善が積み上がる", "焦りに飲まれにくい"],
     nextStep: "大きな成果より、継続できる形を優先する",
+    quickActions: ["小さなルーティンを固定する", "できたことを1行記録する"],
   },
   "heat-diffuse": {
     id: "heat-diffuse",
@@ -37,6 +40,7 @@ export const STATE_CHECK_RESULTS: Record<StateCheckResultId, StateCheckResult> =
     formula: "◎ 熱量 × ■ 選択肢過多 × × 絞り込み不足 ＝ 空回りしやすい状態",
     likely: ["新しい案は出る", "でも着地しにくい", "終わった感が薄くなる"],
     nextStep: "今日やることを1つに絞る",
+    quickActions: ["案はメモへ逃がす", "1件だけ終わらせる"],
   },
   "defense-first": {
     id: "defense-first",
@@ -46,6 +50,7 @@ export const STATE_CHECK_RESULTS: Record<StateCheckResultId, StateCheckResult> =
     formula: "■ 不安 × × 圧のある関係 × △ 本音の抑制 ＝ 守りに入りやすい状態",
     likely: ["判断が慎重になる", "本音が出しづらい", "行動が止まりやすい"],
     nextStep: "圧の強いものを1つ切り分ける",
+    quickActions: ["返事を分ける（保留でもOK）", "本音を1行だけ書く"],
   },
   "burnout-accumulate": {
     id: "burnout-accumulate",
@@ -55,6 +60,7 @@ export const STATE_CHECK_RESULTS: Record<StateCheckResultId, StateCheckResult> =
     formula: "■ 疲労 × ■ 我慢 × × 回復不足 ＝ 消耗しやすい状態",
     likely: ["些細なことで重くなる", "気分転換が雑になりやすい", "自己否定が増えやすい"],
     nextStep: "まず回復を予定に入れる",
+    quickActions: ["まず30分休む", "今日のタスクを減らす"],
   },
   "recovery-lack": {
     id: "recovery-lack",
@@ -64,6 +70,7 @@ export const STATE_CHECK_RESULTS: Record<StateCheckResultId, StateCheckResult> =
     formula: "■ 体力低下 × ■ 集中力低下 × △ 無理な継続 ＝ 立て直し優先の状態",
     likely: ["うまく考えられない", "決めきれない", "小さなことでも負荷が大きい"],
     nextStep: "今日は増やさず、減らす判断をする",
+    quickActions: ["決断を延期する", "休みを確保する"],
   },
   "honesty-compress": {
     id: "honesty-compress",
@@ -74,6 +81,7 @@ export const STATE_CHECK_RESULTS: Record<StateCheckResultId, StateCheckResult> =
       "△ 表面上の安定 × × 本音の抑圧 × ■ 違和感の蓄積 ＝ 内側で詰まりやすい状態",
     likely: ["後からモヤモヤする", "相手に合わせすぎる", "急にしんどくなる"],
     nextStep: "まずは本音を一言だけ書き出す",
+    quickActions: ["「嫌だった」を書き出す", "言い方は下書きで整える"],
   },
 };
 

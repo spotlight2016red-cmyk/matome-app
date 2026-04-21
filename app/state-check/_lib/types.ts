@@ -54,5 +54,6 @@ export type StateCheckResult = {
   formula: string;
   likely: readonly string[];
   nextStep: string;
+  quickActions: readonly string[];
 };
 

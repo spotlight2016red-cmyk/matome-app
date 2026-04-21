@@ -73,6 +73,17 @@ export function ResultCard({
           </div>
           <div className="text-sm sm:text-base leading-relaxed">{result.nextStep}</div>
         </div>
+
+        <div className="rounded-xl bg-gray-50 border border-gray-200 px-4 py-4">
+          <div className="text-xs font-semibold text-gray-600 mb-2">
+            早めに戻す具体行動
+          </div>
+          <ul className="list-disc pl-5 space-y-1 text-sm sm:text-base text-gray-900">
+            {result.quickActions.map((x) => (
+              <li key={x}>{x}</li>
+            ))}
+          </ul>
+        </div>
       </div>
 
       <div className="mt-6">
