@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type { StateCheckHistoryEntryV1 } from "../_lib/types";
+import Link from "next/link";
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -21,13 +21,19 @@ function memoSnippet(memo: string) {
   return s.length > 44 ? `${s.slice(0, 44)}…` : s;
 }
 
-export function HistoryList({
-  history,
-  onClear,
-}: {
-  history: StateCheckHistoryEntryV1[];
-  onClear: () => void;
-}) {
+export type DiagnosisRunSummary = {
+  id: string;
+  created_at: string;
+  result_type: string;
+  note_text: string | null;
+  propulsion_score: number;
+  fatigue_score: number;
+  confusion_score: number;
+  recovery_score: number;
+  heat_score: number;
+};
+
+export function HistoryList({ history }: { history: DiagnosisRunSummary[] }) {
   return (
     <section className="rounded-2xl border border-gray-200 bg-white shadow-sm px-6 py-6">
       <div className="flex items-center justify-between gap-3 mb-4">
@@ -37,15 +43,12 @@ export function HistoryList({
             見返し
           </h3>
         </div>
-        {history.length > 0 && (
-          <button
-            type="button"
-            onClick={onClear}
-            className="text-xs font-semibold text-gray-600 hover:text-gray-900 underline underline-offset-2"
-          >
-            履歴をクリア
-          </button>
-        )}
+        <Link
+          href="/state-check/history"
+          className="text-xs font-semibold text-gray-600 hover:text-gray-900 underline underline-offset-2"
+        >
+          履歴ページへ
+        </Link>
       </div>
 
       {history.length === 0 ? (
@@ -61,14 +64,29 @@ export function HistoryList({
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="text-sm font-semibold text-gray-900">
-                  {h.resultName}
+                  {h.result_type}
                 </div>
                 <div className="text-[11px] text-gray-500">
-                  {formatDate(h.createdAt)}
+                  {formatDate(h.created_at)}
                 </div>
               </div>
+              <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-gray-600">
+                <span>推進 {h.propulsion_score}</span>
+                <span>消耗 {h.fatigue_score}</span>
+                <span>迷い {h.confusion_score}</span>
+                <span>回復 {h.recovery_score}</span>
+                <span>熱量 {h.heat_score}</span>
+              </div>
               <div className="mt-2 text-sm text-gray-700 leading-relaxed">
-                {memoSnippet(h.memo)}
+                {memoSnippet(h.note_text ?? "")}
+              </div>
+              <div className="mt-2">
+                <Link
+                  href={`/state-check/history/${h.id}`}
+                  className="text-xs font-semibold text-gray-700 hover:text-gray-900 underline underline-offset-2"
+                >
+                  詳細を見る
+                </Link>
               </div>
             </div>
           ))}

@@ -1,8 +1,13 @@
-export type AxisKey = "propulsion" | "exhaustion" | "confusion" | "recoveryNeed";
+export type AxisKey =
+  | "propulsion"
+  | "exhaustion"
+  | "confusion"
+  | "recoveryNeed"
+  | "heat";
 
 export type AxisScores = Record<AxisKey, number>;
 
-export type QuestionOptionId = "a" | "b" | "c";
+export type QuestionOptionId = "a" | "b" | "c" | "d";
 
 export type QuestionOption = {
   id: QuestionOptionId;
@@ -32,7 +37,7 @@ export type QuestionOption = {
 export type Question = {
   id: string;
   title: string;
-  options: readonly [QuestionOption, QuestionOption, QuestionOption];
+  options: readonly QuestionOption[];
 };
 
 export type AnswerMap = Record<string, QuestionOptionId | undefined>;

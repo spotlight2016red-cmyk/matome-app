@@ -18,7 +18,7 @@ export function ResultCard({
   computation: StateCheckComputation;
   onReset: () => void;
 }) {
-  const { result, scores } = computation;
+  const { result, scores, heatMode } = computation;
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-white shadow-sm px-6 py-6">
@@ -34,10 +34,26 @@ export function ResultCard({
           <Badge>消耗度 {scores.exhaustion}</Badge>
           <Badge>迷い度 {scores.confusion}</Badge>
           <Badge>回復必要度 {scores.recoveryNeed}</Badge>
+          <Badge>熱量 {scores.heat}</Badge>
         </div>
       </div>
 
       <div className="space-y-5">
+        {heatMode && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4">
+            <div className="text-xs font-semibold text-amber-800 mb-1">
+              {heatMode.title}
+            </div>
+            <div className="text-sm sm:text-base text-gray-900 leading-relaxed mb-3">
+              {heatMode.body}
+            </div>
+            <ul className="list-disc pl-5 space-y-1 text-sm sm:text-base text-gray-900">
+              {heatMode.actions.map((x) => (
+                <li key={x}>{x}</li>
+              ))}
+            </ul>
+          </div>
+        )}
         <div className="rounded-xl bg-gray-50 border border-gray-200 px-4 py-4">
           <div className="text-xs font-semibold text-gray-600 mb-1">
             今の状態の説明

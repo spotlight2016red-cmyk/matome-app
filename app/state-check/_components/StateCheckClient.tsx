@@ -3,18 +3,11 @@
 import * as React from "react";
 import { STATE_CHECK_QUESTIONS } from "../_lib/questions";
 import { computeStateCheck, isAllAnswered } from "../_lib/logic";
-import { deriveTrends } from "../_lib/trends";
-import { loadStateCheckHistory, saveStateCheckHistory } from "../_lib/storage";
-import type {
-  AnswerMap,
-  QuestionOptionId,
-  StateCheckHistoryEntryV1,
-  StateCheckSignals,
-} from "../_lib/types";
+import type { AnswerMap, QuestionOptionId } from "../_lib/types";
 import { QuestionCard } from "./QuestionCard";
 import { ResultCard } from "./ResultCard";
 import { InsightEditor } from "./InsightEditor";
-import { HistoryList } from "./HistoryList";
+import { HistoryList, type DiagnosisRunSummary } from "./HistoryList";
 import { TrendsPanel } from "./TrendsPanel";
 
 function answeredCount(answers: AnswerMap) {
@@ -28,7 +21,17 @@ export function StateCheckClient() {
   const [answers, setAnswers] = React.useState<AnswerMap>({});
   const [mode, setMode] = React.useState<"form" | "result">("form");
   const [memo, setMemo] = React.useState("");
-  const [history, setHistory] = React.useState<StateCheckHistoryEntryV1[]>([]);
+  const [history, setHistory] = React.useState<DiagnosisRunSummary[]>([]);
+  const [trendState, setTrendState] = React.useState<{
+    recentTendencies: string[];
+    recoveryStyles: string[];
+  }>({ recentTendencies: [], recoveryStyles: [] });
+  const [saveState, setSaveState] = React.useState<
+    | { kind: "idle" }
+    | { kind: "saving" }
+    | { kind: "saved" }
+    | { kind: "error"; message: string }
+  >({ kind: "idle" });
 
   const allAnswered = isAllAnswered(answers);
   const done = answeredCount(answers);
@@ -38,11 +41,27 @@ export function StateCheckClient() {
     return computeStateCheck(answers);
   }, [answers, mode]);
 
-  React.useEffect(() => {
-    setHistory(loadStateCheckHistory());
+  const refreshHistory = React.useCallback(async () => {
+    const res = await fetch("/api/diagnosis", { method: "GET" });
+    const json = (await res.json()) as any;
+    if (json?.ok) setHistory(json.runs ?? []);
   }, []);
 
-  const trends = React.useMemo(() => deriveTrends(history), [history]);
+  const refreshTrends = React.useCallback(async () => {
+    const res = await fetch("/api/insights", { method: "GET" });
+    const json = (await res.json()) as any;
+    if (json?.ok) {
+      setTrendState({
+        recentTendencies: json.recentTendencies ?? [],
+        recoveryStyles: json.recoveryStyles ?? [],
+      });
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void refreshHistory();
+    void refreshTrends();
+  }, [refreshHistory, refreshTrends]);
 
   const handlePick = React.useCallback(
     (questionId: string, optionId: QuestionOptionId) => {
@@ -61,35 +80,47 @@ export function StateCheckClient() {
     setAnswers({});
     setMode("form");
     setMemo("");
+    setSaveState({ kind: "idle" });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleSaveThisRun = () => {
+  const handleSaveThisRun = async () => {
     if (!computation) return;
-    const signals = computation.debug.signals as StateCheckSignals;
-    const entry: StateCheckHistoryEntryV1 = {
-      version: 1,
-      id:
-        typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? crypto.randomUUID()
-          : `${Date.now()}_${Math.random().toString(16).slice(2)}`,
-      createdAt: new Date().toISOString(),
-      resultId: computation.debug.chosenId,
-      resultName: computation.result.name,
-      scores: computation.scores,
-      answers,
-      signals,
-      memo: memo.trim(),
-    };
-    const next = [entry, ...history].slice(0, 100);
-    saveStateCheckHistory(next);
-    setHistory(next);
-  };
-
-  const handleClearHistory = () => {
-    const next: StateCheckHistoryEntryV1[] = [];
-    saveStateCheckHistory(next);
-    setHistory(next);
+    setSaveState({ kind: "saving" });
+    try {
+      const payload = {
+        result_type: computation.result.name,
+        propulsion_score: computation.scores.propulsion,
+        fatigue_score: computation.scores.exhaustion,
+        confusion_score: computation.scores.confusion,
+        recovery_score: computation.scores.recoveryNeed,
+        heat_score: computation.scores.heat,
+        answers_json: answers,
+        result_summary: computation.result.description,
+        primary_action: computation.result.nextStep,
+        recovery_actions_json: computation.result.quickActions,
+        heat_mode_title: computation.heatMode?.title ?? null,
+        heat_mode_body: computation.heatMode?.body ?? null,
+        heat_mode_actions_json: computation.heatMode?.actions ?? null,
+        note_text: memo,
+      };
+      const res = await fetch("/api/diagnosis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = (await res.json()) as any;
+      if (!json?.ok) throw new Error(json?.error ?? "保存に失敗しました");
+      setSaveState({ kind: "saved" });
+      setMemo("");
+      await refreshHistory();
+      await refreshTrends();
+    } catch (e) {
+      setSaveState({
+        kind: "error",
+        message: e instanceof Error ? e.message : "保存に失敗しました",
+      });
+    }
   };
 
   return (
@@ -117,15 +148,43 @@ export function StateCheckClient() {
             value={memo}
             onChange={setMemo}
             onSave={handleSaveThisRun}
-            disabled={memo.trim().length === 0}
+            disabled={saveState.kind === "saving"}
           />
+
+          {saveState.kind !== "idle" && (
+            <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700">
+              {saveState.kind === "saving" && "保存中…"}
+              {saveState.kind === "saved" && "保存しました。"}
+              {saveState.kind === "error" && `保存に失敗: ${saveState.message}`}
+            </div>
+          )}
 
           <TrendsPanel
-            recentTendencies={trends.recentTendencies}
-            recoveryStyles={trends.recoveryStyles}
+            recentTendencies={trendState.recentTendencies}
+            recoveryStyles={trendState.recoveryStyles}
           />
 
-          <HistoryList history={history} onClear={handleClearHistory} />
+          <HistoryList history={history} />
+
+          <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-6 py-6">
+            <div className="text-sm sm:text-base font-semibold text-gray-900 mb-2">
+              次に整えるために
+            </div>
+            <div className="flex flex-wrap gap-3 text-sm">
+              <a
+                href="/state-check/history"
+                className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2.5 font-semibold text-gray-900 shadow-sm hover:bg-gray-50"
+              >
+                履歴を見る
+              </a>
+              <a
+                href="/state-check/goals"
+                className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2.5 font-semibold text-gray-900 shadow-sm hover:bg-gray-50"
+              >
+                ゴール整理へ
+              </a>
+            </div>
+          </div>
         </div>
       ) : (
         <>
@@ -170,7 +229,7 @@ export function StateCheckClient() {
             </button>
             {!allAnswered && (
               <p className="mt-2 text-xs text-gray-500">
-                7問すべて回答すると結果が表示できます。
+                {STATE_CHECK_QUESTIONS.length}問すべて回答すると結果が表示できます。
               </p>
             )}
           </div>

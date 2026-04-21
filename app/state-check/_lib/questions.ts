@@ -154,5 +154,31 @@ export const STATE_CHECK_QUESTIONS: readonly Question[] = [
       },
     ],
   },
+  {
+    id: "q8_heat",
+    title: "Q8. 今の熱量",
+    options: [
+      {
+        id: "a",
+        label: "かなり乗っている",
+        add: { heat: 3, propulsion: 1, confusion: 0, exhaustion: 0, recoveryNeed: 0 },
+      },
+      {
+        id: "b",
+        label: "まあある",
+        add: { heat: 2, propulsion: 0, confusion: 0, exhaustion: 0, recoveryNeed: 0 },
+      },
+      {
+        id: "c",
+        label: "普通",
+        add: { heat: 1, propulsion: 0, confusion: 0, exhaustion: 0, recoveryNeed: 0 },
+      },
+      {
+        id: "d",
+        label: "低い",
+        add: { heat: 0, propulsion: 0, confusion: 0, exhaustion: 0, recoveryNeed: 1 },
+      },
+    ],
+  },
 ] as const;
 

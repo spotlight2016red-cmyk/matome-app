@@ -13,6 +13,7 @@ const AXES: readonly AxisKey[] = [
   "exhaustion",
   "confusion",
   "recoveryNeed",
+  "heat",
 ];
 
 export function emptyScores(): AxisScores {
@@ -21,12 +22,18 @@ export function emptyScores(): AxisScores {
     exhaustion: 0,
     confusion: 0,
     recoveryNeed: 0,
+    heat: 0,
   };
 }
 
 export type StateCheckComputation = {
   scores: AxisScores;
   result: StateCheckResult;
+  heatMode: null | {
+    title: string;
+    body: string;
+    actions: string[];
+  };
   debug: {
     chosenId: StateCheckResultId;
     signals: Record<string, boolean>;
@@ -74,6 +81,7 @@ export function computeStateCheck(answers: AnswerMap): StateCheckComputation {
   const highConfusion = scores.confusion >= 7;
   const highPropulsion = scores.propulsion >= 9;
   const midPropulsion = scores.propulsion >= 6;
+  const heatHigh = scores.heat >= 3;
 
   let chosen: StateCheckResultId;
 
@@ -120,11 +128,53 @@ export function computeStateCheck(answers: AnswerMap): StateCheckComputation {
   return {
     scores,
     result: STATE_CHECK_RESULTS[chosen],
+    heatMode: deriveHeatMode({ heatHigh, propulsion: scores.propulsion, confusion: scores.confusion }),
     debug: {
       chosenId: chosen,
       signals,
     },
   };
+}
+
+function deriveHeatMode(input: {
+  heatHigh: boolean;
+  propulsion: number;
+  confusion: number;
+}): StateCheckComputation["heatMode"] {
+  if (!input.heatHigh) return null;
+
+  // 熱が高い時だけ補足カードを出す（本人の“熱の使い方”に繋げる）
+  const propulsionHigh = input.propulsion >= 9;
+  const confusionHigh = input.confusion >= 7;
+
+  if (propulsionHigh && !confusionHigh) {
+    return {
+      title: "今は一気に進めるチャンスです",
+      body:
+        "熱がある今のうちに、単発で頑張るだけでなく、次の自分が迷わないように、下書き・素材・次の工程まで仕込んでおくと前に進みやすくなります。",
+      actions: [
+        "下書きを先に作る",
+        "次の工程を書き出す",
+        "未来の自分向けメモを残す",
+        "1つは完成形に近づける",
+      ],
+    };
+  }
+
+  if (confusionHigh) {
+    return {
+      title: "熱はあります。広げすぎ注意です",
+      body:
+        "いまは動ける状態ですが、同時に色々広げすぎると未完了が増えて後で重くなりやすいです。まず1つ締めることを優先してください。",
+      actions: [
+        "今日やることを1つに絞る",
+        "新しい案はメモに逃がす",
+        "1件終わらせてから次に行く",
+      ],
+    };
+  }
+
+  return null;
 }
 
 export function isAllAnswered(answers: AnswerMap): boolean {
