@@ -777,9 +777,9 @@ export function OrganizationChart() {
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <Link
             href="/state-check"
-            className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
+            className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-base font-semibold text-emerald-900 shadow-sm hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-300"
           >
-            現在地診断へ
+            自分の状態診断へ
           </Link>
           <div className="text-xs text-gray-500">
             いまの状態を整理して、次の一手を出す
