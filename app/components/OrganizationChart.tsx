@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 
 function FlowArrow() {
   return (
@@ -772,6 +773,18 @@ export function OrganizationChart() {
         <div className="text-4xl tracking-widest text-gray-900 mb-4">SPOTLIGHT FILMS</div>
         <h1 className="text-3xl tracking-wider text-gray-900 mb-2">組織構造図</h1>
         <p className="text-gray-500">Organization Dashboard</p>
+
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <Link
+            href="/state-check"
+            className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
+          >
+            現在地診断へ
+          </Link>
+          <div className="text-xs text-gray-500">
+            いまの状態を整理して、次の一手を出す
+          </div>
+        </div>
       </div>
 
       {/* 理念（常時表示） */}
