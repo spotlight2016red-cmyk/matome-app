@@ -1,5 +1,6 @@
 import { listDiagnosisRuns } from "@/app/state-check/_server/diagnosisRepo";
 import { getDiagnosisRun } from "@/app/state-check/_server/diagnosisRepo";
+import { requireUserId } from "@/app/state-check/_server/auth";
 
 function jsonError(message: string, status = 400) {
   return Response.json({ ok: false, error: message }, { status });
@@ -11,6 +12,8 @@ function bump(map: Record<string, number>, key: string) {
 
 export async function GET() {
   try {
+    const userId = await requireUserId();
+    if (!userId) return jsonError("Unauthorized", 401);
     // 直近5件の詳細を読んで、ルールベースで傾向を出す（初期版）
     const summaries = await listDiagnosisRuns({ limit: 5 });
     const ids = summaries.map((s) => s.id);

@@ -1,8 +1,8 @@
-import { supabaseAdmin } from "@/app/lib/supabase/admin";
+import { supabaseServer } from "@/app/lib/supabase/server";
 import type { DiagnosisRunInsert, DiagnosisRunRow } from "./types";
 
 export async function createDiagnosisRun(input: DiagnosisRunInsert) {
-  const sb = supabaseAdmin();
+  const sb = await supabaseServer();
   const { data, error } = await sb
     .from("diagnosis_runs")
     .insert(input)
@@ -14,7 +14,7 @@ export async function createDiagnosisRun(input: DiagnosisRunInsert) {
 
 export async function listDiagnosisRuns(params?: { limit?: number }) {
   const limit = params?.limit ?? 30;
-  const sb = supabaseAdmin();
+  const sb = await supabaseServer();
   const { data, error } = await sb
     .from("diagnosis_runs")
     .select("id, created_at, result_type, note_text, propulsion_score, fatigue_score, confusion_score, recovery_score, heat_score")
@@ -25,7 +25,7 @@ export async function listDiagnosisRuns(params?: { limit?: number }) {
 }
 
 export async function getDiagnosisRun(id: string) {
-  const sb = supabaseAdmin();
+  const sb = await supabaseServer();
   const { data, error } = await sb
     .from("diagnosis_runs")
     .select("*")

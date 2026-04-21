@@ -1,4 +1,5 @@
 import { createDiagnosisRun, listDiagnosisRuns } from "@/app/state-check/_server/diagnosisRepo";
+import { requireUserId } from "@/app/state-check/_server/auth";
 
 function jsonError(message: string, status = 400) {
   return Response.json({ ok: false, error: message }, { status });
@@ -6,6 +7,8 @@ function jsonError(message: string, status = 400) {
 
 export async function GET() {
   try {
+    const userId = await requireUserId();
+    if (!userId) return jsonError("Unauthorized", 401);
     const runs = await listDiagnosisRuns({ limit: 30 });
     return Response.json({ ok: true, runs });
   } catch (e) {
@@ -15,6 +18,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const userId = await requireUserId();
+    if (!userId) return jsonError("Unauthorized", 401);
     const body = (await request.json()) as any;
     if (!body || typeof body !== "object") return jsonError("Invalid body");
 
@@ -36,7 +41,7 @@ export async function POST(request: Request) {
     }
 
     const created = await createDiagnosisRun({
-      user_id: body.user_id ?? null,
+      user_id: userId,
       result_type: String(body.result_type),
       propulsion_score: Number(body.propulsion_score),
       fatigue_score: Number(body.fatigue_score),

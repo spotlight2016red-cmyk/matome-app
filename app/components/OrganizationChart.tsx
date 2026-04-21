@@ -781,6 +781,12 @@ export function OrganizationChart() {
           >
             自分の状態診断へ
           </Link>
+          <Link
+            href="/login"
+            className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
+          >
+            ログイン
+          </Link>
           <div className="text-xs text-gray-500">
             いまの状態を整理して、次の一手を出す
           </div>

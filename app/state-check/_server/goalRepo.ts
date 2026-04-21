@@ -1,9 +1,9 @@
-import { supabaseAdmin } from "@/app/lib/supabase/admin";
+import { supabaseServer } from "@/app/lib/supabase/server";
 import type { GoalMapInsert, GoalMapRow } from "./types";
 
 export async function listGoalMaps(params?: { limit?: number }) {
   const limit = params?.limit ?? 10;
-  const sb = supabaseAdmin();
+  const sb = await supabaseServer();
   const { data, error } = await sb
     .from("goal_maps")
     .select("*")
@@ -14,7 +14,7 @@ export async function listGoalMaps(params?: { limit?: number }) {
 }
 
 export async function upsertGoalMap(input: GoalMapInsert & { id?: string }) {
-  const sb = supabaseAdmin();
+  const sb = await supabaseServer();
   const payload: any = { ...input };
   const { data, error } = await sb
     .from("goal_maps")

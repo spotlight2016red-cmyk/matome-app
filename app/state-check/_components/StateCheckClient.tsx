@@ -43,12 +43,21 @@ export function StateCheckClient() {
 
   const refreshHistory = React.useCallback(async () => {
     const res = await fetch("/api/diagnosis", { method: "GET" });
+    if (res.status === 401) {
+      setSaveState({ kind: "error", message: "ログインしてください（保存・履歴が有効になります）" });
+      setHistory([]);
+      return;
+    }
     const json = (await res.json()) as any;
     if (json?.ok) setHistory(json.runs ?? []);
   }, []);
 
   const refreshTrends = React.useCallback(async () => {
     const res = await fetch("/api/insights", { method: "GET" });
+    if (res.status === 401) {
+      setTrendState({ recentTendencies: [], recoveryStyles: [] });
+      return;
+    }
     const json = (await res.json()) as any;
     if (json?.ok) {
       setTrendState({
@@ -110,6 +119,7 @@ export function StateCheckClient() {
         body: JSON.stringify(payload),
       });
       const json = (await res.json()) as any;
+      if (res.status === 401) throw new Error("ログインしてください（保存が有効になります）");
       if (!json?.ok) throw new Error(json?.error ?? "保存に失敗しました");
       setSaveState({ kind: "saved" });
       setMemo("");
@@ -155,7 +165,19 @@ export function StateCheckClient() {
             <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700">
               {saveState.kind === "saving" && "保存中…"}
               {saveState.kind === "saved" && "保存しました。"}
-              {saveState.kind === "error" && `保存に失敗: ${saveState.message}`}
+              {saveState.kind === "error" && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span>{`保存に失敗: ${saveState.message}`}</span>
+                  {saveState.message.includes("ログイン") && (
+                    <a
+                      href="/login"
+                      className="font-semibold underline underline-offset-2"
+                    >
+                      ログインへ
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
