@@ -11,6 +11,7 @@ import { HistoryList, type DiagnosisRunSummary } from "./HistoryList";
 import { TrendsPanel } from "./TrendsPanel";
 import { levelFromPoints, totalPoints } from "../_lib/points";
 import { supabaseBrowser } from "@/app/lib/supabase/browser";
+import { AvatarGrowthCard } from "@/app/components/AvatarGrowthCard";
 
 function saveErrorMessage(e: unknown): string {
   if (e instanceof Error) {
@@ -208,6 +209,14 @@ export function StateCheckClient() {
             <span className="ui-pill">{points}pt / 次 {nextLevelAt}pt</span>
             {authed === false && <span className="ui-pill">未ログイン（保存はログイン後）</span>}
           </div>
+        </div>
+        <div className="mt-4">
+          <AvatarGrowthCard
+            level={level}
+            points={points}
+            nextLevelAt={nextLevelAt}
+            compact
+          />
         </div>
         <p className="text-sm sm:text-base text-gray-700 leading-relaxed mb-3">
           いくつかの質問に答えるだけで、今どこにいて、このままだとどうなりやすいか、そして次に何を整えると良いかが分かります。

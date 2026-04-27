@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HomeClient } from "./ui/HomeClient";
 
 export const metadata = {
   title: "ホーム | 自分診断アプリ",
@@ -52,6 +53,8 @@ export default function HomePage() {
             </Pill>
           </div>
         </div>
+
+        <HomeClient />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <section className="lg:col-span-2 rounded-3xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur px-6 py-7 sm:px-8 sm:py-8">
