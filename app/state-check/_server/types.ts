@@ -1,6 +1,6 @@
 export type DiagnosisRunInsert = {
   user_id?: string | null;
-  run_kind?: "morning" | "extra" | "night";
+  run_kind?: "morning" | "checkin" | "extra" | "night";
   day_key?: string; // YYYY-MM-DD (castable to date)
   result_type: string;
   propulsion_score: number;

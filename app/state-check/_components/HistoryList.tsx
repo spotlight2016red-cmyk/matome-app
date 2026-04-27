@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import Link from "next/link";
+import type { RunKind } from "../_lib/runKind";
+import { normalizeRunKind } from "../_lib/runKind";
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -25,7 +27,7 @@ export type DiagnosisRunSummary = {
   id: string;
   created_at: string;
   day_key?: string;
-  run_kind?: string;
+  run_kind?: RunKind | null | undefined;
   result_type: string;
   note_text: string | null;
   propulsion_score: number;
@@ -36,6 +38,11 @@ export type DiagnosisRunSummary = {
 };
 
 export function HistoryList({ history }: { history: DiagnosisRunSummary[] }) {
+  const normalized = React.useMemo(
+    () => history.map((h) => ({ ...h, run_kind: normalizeRunKind(h.run_kind) })),
+    [history]
+  );
+
   return (
     <section className="rounded-2xl border border-gray-200 bg-white shadow-sm px-6 py-6">
       <div className="flex items-center justify-between gap-3 mb-4">
@@ -59,7 +66,7 @@ export function HistoryList({ history }: { history: DiagnosisRunSummary[] }) {
         </div>
       ) : (
         <div className="space-y-3">
-          {history.slice(0, 12).map((h) => (
+          {normalized.slice(0, 12).map((h) => (
             <div
               key={h.id}
               className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3"
@@ -92,7 +99,7 @@ export function HistoryList({ history }: { history: DiagnosisRunSummary[] }) {
               </div>
             </div>
           ))}
-          {history.length > 12 && (
+          {normalized.length > 12 && (
             <div className="text-xs text-gray-500">
               直近 12 件を表示中（初期版）
             </div>

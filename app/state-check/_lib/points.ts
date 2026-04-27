@@ -1,12 +1,15 @@
+import type { RunKind } from "./runKind";
+import { normalizeRunKind } from "./runKind";
+
 export type RunForPoints = {
-  // Stored data may contain unknown strings. Treat them as "extra".
-  run_kind?: string | null;
+  run_kind?: RunKind | null | undefined;
   heat_score?: number | null;
 };
 
 export function pointsForRun(run: RunForPoints): number {
-  const kind = run.run_kind ?? "extra";
-  const base = kind === "morning" ? 20 : kind === "night" ? 10 : 15;
+  const kind = normalizeRunKind(run.run_kind);
+  const base =
+    kind === "morning" ? 20 : kind === "night" ? 10 : kind === "checkin" ? 18 : 15;
   const heat = Math.max(0, Math.min(10, Number(run.heat_score ?? 0)));
   // Heat gives a small bonus to make "game feel" without biasing too hard.
   return base + Math.floor(heat / 2);
