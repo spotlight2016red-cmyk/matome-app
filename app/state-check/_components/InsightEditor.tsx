@@ -23,7 +23,7 @@ export function InsightEditor({
           </h3>
         </div>
         <div className="text-[11px] text-gray-500 shrink-0">
-          ローカル保存
+          アカウントに保存
         </div>
       </div>
 
@@ -55,7 +55,7 @@ export function InsightEditor({
               : "bg-gray-900 text-white hover:bg-gray-800",
           ].join(" ")}
         >
-          今回の診断を保存する
+          記録する
         </button>
       </div>
     </section>

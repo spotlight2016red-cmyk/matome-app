@@ -12,6 +12,26 @@ import { TrendsPanel } from "./TrendsPanel";
 import { levelFromPoints, totalPoints } from "../_lib/points";
 import { supabaseBrowser } from "@/app/lib/supabase/browser";
 
+function saveErrorMessage(e: unknown): string {
+  if (e instanceof Error) {
+    const m = e.message || "保存に失敗しました";
+    if (m.includes("ログイン")) return "ログインが必要です。ログイン後にもう一度お試しください。";
+    if (m.toLowerCase().includes("jwt")) return "ログイン状態が切れました。もう一度ログインしてください。";
+    return m;
+  }
+  return "保存に失敗しました";
+}
+
+function runKindCardMeta(kind: "morning" | "extra" | "night") {
+  if (kind === "morning") {
+    return { title: "午前チェック", desc: "今日の土台を作る（基本）" };
+  }
+  if (kind === "night") {
+    return { title: "夜メモ", desc: "戻れた/ズレたを軽く記録" };
+  }
+  return { title: "気になった時", desc: "違和感を早めに回収する" };
+}
+
 function answeredCount(answers: AnswerMap) {
   return STATE_CHECK_QUESTIONS.reduce(
     (n, q) => n + (answers[q.id] ? 1 : 0),
@@ -164,10 +184,16 @@ export function StateCheckClient() {
     } catch (e) {
       setSaveState({
         kind: "error",
-        message: e instanceof Error ? e.message : "保存に失敗しました",
+        message: saveErrorMessage(e),
       });
     }
   };
+
+  React.useEffect(() => {
+    if (saveState.kind !== "saved") return;
+    const t = window.setTimeout(() => setSaveState({ kind: "idle" }), 2500);
+    return () => window.clearTimeout(t);
+  }, [saveState.kind]);
 
   return (
     <div className="w-full max-w-2xl mx-auto">
@@ -202,7 +228,7 @@ export function StateCheckClient() {
             <div className="text-sm text-gray-700 mb-3">
               午前のチェック（基本）/ 気になった時（任意）/ 夜の振り返りメモ（軽め）
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {(
                 [
                   ["morning", "午前チェック"],
@@ -211,20 +237,24 @@ export function StateCheckClient() {
                 ] as const
               ).map(([k, label]) => {
                 const selected = runKind === k;
+                const meta = runKindCardMeta(k);
                 return (
                   <button
                     key={k}
                     type="button"
                     onClick={() => setRunKind(k)}
                     className={[
-                      "rounded-xl border px-3 py-2 text-sm font-semibold",
+                      "rounded-2xl border px-4 py-3 text-left",
                       selected
                         ? "border-gray-900 bg-gray-900 text-white"
                         : "border-gray-200 bg-white text-gray-900 hover:bg-gray-50",
                     ].join(" ")}
                     aria-pressed={selected}
                   >
-                    {label}
+                    <div className="text-sm font-semibold">{meta.title}</div>
+                    <div className={selected ? "text-xs text-white/80" : "text-xs text-gray-600"}>
+                      {meta.desc}
+                    </div>
                   </button>
                 );
               })}
@@ -239,9 +269,18 @@ export function StateCheckClient() {
           />
 
           {saveState.kind !== "idle" && (
-            <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700">
+            <div
+              className={[
+                "rounded-xl border px-4 py-3 text-sm",
+                saveState.kind === "saved"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                  : saveState.kind === "error"
+                    ? "border-rose-200 bg-rose-50 text-rose-900"
+                    : "border-gray-200 bg-white text-gray-700",
+              ].join(" ")}
+            >
               {saveState.kind === "saving" && "保存中…"}
-              {saveState.kind === "saved" && "保存しました。"}
+              {saveState.kind === "saved" && "記録しました。"}
               {saveState.kind === "error" && (
                 <div className="flex flex-wrap items-center gap-2">
                   <span>{`保存に失敗: ${saveState.message}`}</span>
@@ -292,7 +331,7 @@ export function StateCheckClient() {
             <div className="text-sm text-gray-700 mb-3">
               午前のチェック（基本）/ 気になった時（任意）/ 夜の振り返りメモ（軽め）
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {(
                 [
                   ["morning", "午前チェック"],
@@ -301,20 +340,24 @@ export function StateCheckClient() {
                 ] as const
               ).map(([k, label]) => {
                 const selected = runKind === k;
+                const meta = runKindCardMeta(k);
                 return (
                   <button
                     key={k}
                     type="button"
                     onClick={() => setRunKind(k)}
                     className={[
-                      "rounded-xl border px-3 py-2 text-sm font-semibold",
+                      "rounded-2xl border px-4 py-3 text-left",
                       selected
                         ? "border-gray-900 bg-gray-900 text-white"
                         : "border-gray-200 bg-white text-gray-900 hover:bg-gray-50",
                     ].join(" ")}
                     aria-pressed={selected}
                   >
-                    {label}
+                    <div className="text-sm font-semibold">{meta.title}</div>
+                    <div className={selected ? "text-xs text-white/80" : "text-xs text-gray-600"}>
+                      {meta.desc}
+                    </div>
                   </button>
                 );
               })}

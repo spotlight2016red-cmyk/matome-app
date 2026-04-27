@@ -25,7 +25,7 @@ export function LoginClient() {
         const { error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
         setMessage("ログインしました。");
-        window.location.href = "/state-check";
+        window.location.href = "/home";
       }
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "失敗しました");

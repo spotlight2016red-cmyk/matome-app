@@ -5,6 +5,13 @@ import Link from "next/link";
 import type { RunKind } from "../_lib/runKind";
 import { normalizeRunKind } from "../_lib/runKind";
 
+function kindLabel(kind: RunKind) {
+  if (kind === "morning") return "午前";
+  if (kind === "night") return "夜";
+  if (kind === "checkin") return "チェックイン";
+  return "追加";
+}
+
 function formatDate(iso: string) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
@@ -78,6 +85,9 @@ export function HistoryList({ history }: { history: DiagnosisRunSummary[] }) {
                 <div className="text-[11px] text-gray-500">
                   {formatDate(h.created_at)}
                 </div>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="ui-pill">{kindLabel(h.run_kind)}</span>
               </div>
               <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-gray-600">
                 <span>推進 {h.propulsion_score}</span>
