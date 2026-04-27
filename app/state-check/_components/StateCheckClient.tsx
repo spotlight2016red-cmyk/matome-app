@@ -154,12 +154,8 @@ export function StateCheckClient() {
             いまの自分の状態を整理する
           </h1>
           <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-600">
-            <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-3 py-1">
-              Lv.{level}
-            </span>
-            <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-3 py-1">
-              {points}pt / 次 {nextLevelAt}pt
-            </span>
+            <span className="ui-pill ui-pill-hero">Lv.{level}</span>
+            <span className="ui-pill">{points}pt / 次 {nextLevelAt}pt</span>
           </div>
         </div>
         <p className="text-sm sm:text-base text-gray-700 leading-relaxed mb-3">

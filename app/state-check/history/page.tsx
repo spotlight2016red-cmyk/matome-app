@@ -78,8 +78,9 @@ export default async function StateCheckHistoryPage() {
   const dayKeys = Array.from(groups.keys()).sort((a, b) => (a < b ? 1 : -1));
 
   return (
-    <div className="size-full min-h-screen bg-white px-5 py-10 sm:px-8 sm:py-14 md:px-16">
-      <div className="w-full max-w-2xl mx-auto">
+    <div className="size-full min-h-screen ui-app-bg px-5 py-10 sm:px-8 sm:py-14 md:px-16">
+      <div className="mx-auto w-full max-w-7xl">
+        <div className="w-full max-w-2xl mx-auto">
         <div className="mb-6">
           <Link
             href="/state-check"
@@ -121,7 +122,7 @@ export default async function StateCheckHistoryPage() {
                       </div>
                     </div>
                     {summaryLine && (
-                      <div className="text-xs text-gray-600">{summaryLine}</div>
+                      <div className="ui-pill">{summaryLine}</div>
                     )}
                   </div>
 
@@ -176,6 +177,7 @@ export default async function StateCheckHistoryPage() {
             })}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

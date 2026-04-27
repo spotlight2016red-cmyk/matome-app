@@ -9,8 +9,10 @@ export const metadata: Metadata = {
 
 export default function StateCheckPage() {
   return (
-    <div className="size-full min-h-screen bg-white px-5 py-10 sm:px-8 sm:py-14 md:px-16">
-      <StateCheckClient />
+    <div className="size-full min-h-screen ui-app-bg px-5 py-10 sm:px-8 sm:py-14 md:px-16">
+      <div className="mx-auto w-full max-w-7xl">
+        <StateCheckClient />
+      </div>
     </div>
   );
 }
