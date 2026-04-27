@@ -3,18 +3,18 @@ export type EnvCheck = {
   hasSupabaseAnonKey: boolean;
 };
 
-function read(name: string): string | undefined {
-  const v = process.env[name];
-  return v && v.trim() ? v : undefined;
-}
-
 export function getSupabasePublicEnv(): {
   url?: string;
   anonKey?: string;
   check: EnvCheck;
 } {
-  const url = read("NEXT_PUBLIC_SUPABASE_URL");
-  const anonKey = read("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  // IMPORTANT:
+  // - For client components, Next.js only inlines NEXT_PUBLIC_* when referenced statically.
+  // - Avoid process.env[name] dynamic access here, otherwise the client bundle won't get env.
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const rawAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = rawUrl && rawUrl.trim() ? rawUrl : undefined;
+  const anonKey = rawAnonKey && rawAnonKey.trim() ? rawAnonKey : undefined;
   return {
     url,
     anonKey,
