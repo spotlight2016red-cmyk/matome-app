@@ -1,7 +1,6 @@
-export type RunKind = "morning" | "extra" | "night";
-
 export type RunForPoints = {
-  run_kind?: RunKind | null;
+  // Stored data may contain unknown strings. Treat them as "extra".
+  run_kind?: string | null;
   heat_score?: number | null;
 };
 
