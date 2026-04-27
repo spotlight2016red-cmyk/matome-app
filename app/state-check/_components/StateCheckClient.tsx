@@ -10,6 +10,7 @@ import { InsightEditor } from "./InsightEditor";
 import { HistoryList, type DiagnosisRunSummary } from "./HistoryList";
 import { TrendsPanel } from "./TrendsPanel";
 import { levelFromPoints, totalPoints } from "../_lib/points";
+import { supabaseBrowser } from "@/app/lib/supabase/browser";
 
 function answeredCount(answers: AnswerMap) {
   return STATE_CHECK_QUESTIONS.reduce(
@@ -25,6 +26,7 @@ export function StateCheckClient() {
   const [runKind, setRunKind] = React.useState<"morning" | "extra" | "night">(
     "morning"
   );
+  const [authed, setAuthed] = React.useState<boolean | null>(null);
   const [history, setHistory] = React.useState<DiagnosisRunSummary[]>([]);
   const [trendState, setTrendState] = React.useState<{
     recentTendencies: string[];
@@ -54,7 +56,6 @@ export function StateCheckClient() {
   const refreshHistory = React.useCallback(async () => {
     const res = await fetch("/api/diagnosis", { method: "GET" });
     if (res.status === 401) {
-      setSaveState({ kind: "error", message: "ログインしてください（保存・履歴が有効になります）" });
       setHistory([]);
       return;
     }
@@ -78,8 +79,31 @@ export function StateCheckClient() {
   }, []);
 
   React.useEffect(() => {
-    void refreshHistory();
-    void refreshTrends();
+    let mounted = true;
+    (async () => {
+      try {
+        const sb = supabaseBrowser();
+        const { data } = await sb.auth.getSession();
+        if (!mounted) return;
+        const ok = Boolean(data.session);
+        setAuthed(ok);
+        if (ok) {
+          void refreshHistory();
+          void refreshTrends();
+        } else {
+          setHistory([]);
+          setTrendState({ recentTendencies: [], recoveryStyles: [] });
+        }
+      } catch {
+        if (!mounted) return;
+        setAuthed(false);
+        setHistory([]);
+        setTrendState({ recentTendencies: [], recoveryStyles: [] });
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
   }, [refreshHistory, refreshTrends]);
 
   const handlePick = React.useCallback(
@@ -156,6 +180,7 @@ export function StateCheckClient() {
           <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-600">
             <span className="ui-pill ui-pill-hero">Lv.{level}</span>
             <span className="ui-pill">{points}pt / 次 {nextLevelAt}pt</span>
+            {authed === false && <span className="ui-pill">未ログイン（保存はログイン後）</span>}
           </div>
         </div>
         <p className="text-sm sm:text-base text-gray-700 leading-relaxed mb-3">
