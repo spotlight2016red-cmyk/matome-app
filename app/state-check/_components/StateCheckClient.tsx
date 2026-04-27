@@ -9,6 +9,7 @@ import { ResultCard } from "./ResultCard";
 import { InsightEditor } from "./InsightEditor";
 import { HistoryList, type DiagnosisRunSummary } from "./HistoryList";
 import { TrendsPanel } from "./TrendsPanel";
+import { levelFromPoints, totalPoints } from "../_lib/points";
 
 function answeredCount(answers: AnswerMap) {
   return STATE_CHECK_QUESTIONS.reduce(
@@ -38,6 +39,12 @@ export function StateCheckClient() {
 
   const allAnswered = isAllAnswered(answers);
   const done = answeredCount(answers);
+
+  const points = React.useMemo(() => totalPoints(history), [history]);
+  const { level, nextLevelAt } = React.useMemo(
+    () => levelFromPoints(points),
+    [points]
+  );
 
   const computation = React.useMemo(() => {
     if (mode !== "result") return null;
@@ -142,9 +149,19 @@ export function StateCheckClient() {
     <div className="w-full max-w-2xl mx-auto">
       {/* Hero */}
       <section className="mb-8 sm:mb-10">
-        <h1 className="text-2xl sm:text-3xl font-semibold tracking-wide text-gray-900 mb-3">
-          いまの自分の状態を整理する
-        </h1>
+        <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-wide text-gray-900">
+            いまの自分の状態を整理する
+          </h1>
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-600">
+            <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-3 py-1">
+              Lv.{level}
+            </span>
+            <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-3 py-1">
+              {points}pt / 次 {nextLevelAt}pt
+            </span>
+          </div>
+        </div>
         <p className="text-sm sm:text-base text-gray-700 leading-relaxed mb-3">
           いくつかの質問に答えるだけで、今どこにいて、このままだとどうなりやすいか、そして次に何を整えると良いかが分かります。
         </p>
@@ -249,6 +266,40 @@ export function StateCheckClient() {
         </div>
       ) : (
         <>
+          <section className="mb-5 rounded-2xl border border-gray-200 bg-white shadow-sm px-6 py-6">
+            <div className="text-xs text-gray-500 mb-1">利用タイミング</div>
+            <div className="text-sm text-gray-700 mb-3">
+              午前のチェック（基本）/ 気になった時（任意）/ 夜の振り返りメモ（軽め）
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {(
+                [
+                  ["morning", "午前チェック"],
+                  ["extra", "追加チェック"],
+                  ["night", "夜メモ"],
+                ] as const
+              ).map(([k, label]) => {
+                const selected = runKind === k;
+                return (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setRunKind(k)}
+                    className={[
+                      "rounded-xl border px-3 py-2 text-sm font-semibold",
+                      selected
+                        ? "border-gray-900 bg-gray-900 text-white"
+                        : "border-gray-200 bg-white text-gray-900 hover:bg-gray-50",
+                    ].join(" ")}
+                    aria-pressed={selected}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
           {/* Progress */}
           <div className="flex items-center justify-between gap-3 mb-4">
             <div className="text-sm text-gray-600">

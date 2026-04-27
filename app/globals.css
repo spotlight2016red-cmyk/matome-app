@@ -3,6 +3,15 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --surface: #ffffff;
+  --surface-muted: #f7f7f8;
+  --border: #e5e7eb;
+  --border-strong: #d1d5db;
+  --ring: rgba(17, 24, 39, 0.18);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.08);
+  --radius-lg: 16px;
+  --radius-xl: 24px;
 }
 
 @theme inline {
@@ -16,11 +25,38 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --surface: #0f0f10;
+    --surface-muted: #141416;
+    --border: #262626;
+    --border-strong: #3a3a3a;
+    --ring: rgba(237, 237, 237, 0.18);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    --shadow-md: 0 12px 30px rgba(0, 0, 0, 0.6);
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* small, global primitives (Figma-like) */
+:where(.ui-surface) {
+  background: var(--surface);
+}
+
+:where(.ui-surface-muted) {
+  background: var(--surface-muted);
+}
+
+:where(.ui-border) {
+  border-color: var(--border);
+}
+
+:where(.ui-card) {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  border-radius: var(--radius-xl);
 }
