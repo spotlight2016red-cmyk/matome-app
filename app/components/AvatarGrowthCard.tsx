@@ -28,22 +28,21 @@ export function AvatarGrowthCard({
       ].join(" ")}
     >
       <div className="flex items-start gap-4">
-        <div
-          className={[
-            "shrink-0 grid place-items-center rounded-2xl text-white",
-            "bg-gradient-to-br from-blue-500 to-purple-500",
-            compact ? "size-12 text-2xl" : "size-14 text-3xl",
-          ].join(" ")}
-          aria-hidden
-        >
-          {stage.emoji}
+        <div className={["shrink-0 rounded-2xl bg-white border border-gray-200 overflow-hidden shadow-sm", compact ? "size-12" : "size-14"].join(" ")}>
+          <img
+            src={stage.imageSrc}
+            alt={`avatar_${stage.level}`}
+            className="size-full object-cover"
+            width={compact ? 48 : 56}
+            height={compact ? 48 : 56}
+          />
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="ui-pill ui-pill-hero">Lv.{Math.max(1, Math.floor(level))}</span>
             <span className="ui-pill">{points}pt</span>
-            {level >= 5 ? (
+            {level >= 6 ? (
               <span className="ui-pill">最大Lv</span>
             ) : (
               <span className="ui-pill">次まで {remain}pt</span>

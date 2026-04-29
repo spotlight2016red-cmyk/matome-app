@@ -61,6 +61,7 @@ export function StateCheckClient() {
   const [todayProgress, setTodayProgress] = React.useState<number | null>(null);
   const [serverPoints, setServerPoints] = React.useState<number | null>(null);
   const [ptGain, setPtGain] = React.useState<null | { delta: number; key: string }>(null);
+  const [levelUp, setLevelUp] = React.useState<null | { toLevel: number; key: string }>(null);
   const [trendState, setTrendState] = React.useState<{
     recentTendencies: string[];
     recoveryStyles: string[];
@@ -83,6 +84,16 @@ export function StateCheckClient() {
     () => levelFromPoints(points),
     [points]
   );
+
+  const prevLevelRef = React.useRef<number>(level);
+  React.useEffect(() => {
+    const prev = prevLevelRef.current;
+    if (level > prev) {
+      setLevelUp({ toLevel: level, key: String(Date.now()) });
+      window.setTimeout(() => setLevelUp(null), 1600);
+    }
+    prevLevelRef.current = level;
+  }, [level]);
 
   const computation = React.useMemo(() => {
     if (mode !== "result") return null;
@@ -319,6 +330,33 @@ export function StateCheckClient() {
                 100% {
                   opacity: 0;
                   transform: translateY(-6px);
+                }
+              }
+            `}</style>
+          </div>
+        )}
+        {levelUp && (
+          <div key={levelUp.key} className="mb-3">
+            <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900 animate-[pop_1.6s_ease-out_forwards]">
+              レベルアップ！ Lv.{levelUp.toLevel}
+            </div>
+            <style jsx>{`
+              @keyframes pop {
+                0% {
+                  opacity: 0;
+                  transform: translateY(6px) scale(0.98);
+                }
+                12% {
+                  opacity: 1;
+                  transform: translateY(0) scale(1);
+                }
+                88% {
+                  opacity: 1;
+                  transform: translateY(-2px) scale(1);
+                }
+                100% {
+                  opacity: 0;
+                  transform: translateY(-6px) scale(0.98);
                 }
               }
             `}</style>
