@@ -11,7 +11,7 @@ export const avatarStages: AvatarStage[] = [
     level: 1,
     key: "avatar_1",
     label: "はじまり",
-    imageSrc: "/avatars/avatar_1.svg",
+    imageSrc: "/avatars/avatar_1.jpg",
     message: "まずは1回の記録。小さく始めるほど、続きます。",
   },
   {

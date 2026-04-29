@@ -64,6 +64,13 @@ export function StateCheckClient() {
   const [serverPoints, setServerPoints] = React.useState<number | null>(null);
   const [ptGain, setPtGain] = React.useState<null | { delta: number; key: string }>(null);
   const [levelUp, setLevelUp] = React.useState<null | { toLevel: number; key: string }>(null);
+  const [saveToast, setSaveToast] = React.useState<null | {
+    kind: "saving" | "saved" | "error";
+    delta: number;
+    pointsAfter: number;
+    nextLevelAt: number;
+    tomorrowStep: string;
+  }>(null);
   const [trendState, setTrendState] = React.useState<{
     recentTendencies: string[];
     recoveryStyles: string[];
@@ -86,6 +93,8 @@ export function StateCheckClient() {
     () => levelFromPoints(points),
     [points]
   );
+
+  const closeSaveToast = React.useCallback(() => setSaveToast(null), []);
 
   const prevLevelRef = React.useRef<number>(level);
   React.useEffect(() => {
@@ -241,6 +250,18 @@ export function StateCheckClient() {
     if (!computation) return;
     setSaveState({ kind: "saving" });
     try {
+      // Instant "feel-good" toast (optimistic +10).
+      const optimisticDelta = 10;
+      const optimisticPointsAfter = points + optimisticDelta;
+      const optimisticLevel = levelFromPoints(optimisticPointsAfter);
+      setSaveToast({
+        kind: "saving",
+        delta: optimisticDelta,
+        pointsAfter: optimisticPointsAfter,
+        nextLevelAt: optimisticLevel.nextLevelAt,
+        tomorrowStep: computation.result.nextStep,
+      });
+
       const move =
         nextMove ??
         chooseNextMove(computation, {
@@ -273,19 +294,44 @@ export function StateCheckClient() {
       if (!json?.ok) throw new Error(json?.error ?? "保存に失敗しました");
       setSaveState({ kind: "saved" });
       setMemo("");
-      if (typeof json.points === "number") setServerPoints(Number(json.points));
       const delta = Number(json.points_delta ?? 10);
-      setPtGain({ delta: Number.isFinite(delta) ? delta : 10, key: String(Date.now()) });
+      const safeDelta = Number.isFinite(delta) ? delta : 10;
+      const newServerPoints =
+        typeof json.points === "number" ? Number(json.points) : null;
+      if (typeof newServerPoints === "number") setServerPoints(newServerPoints);
+
+      setPtGain({ delta: safeDelta, key: String(Date.now()) });
       window.setTimeout(() => setPtGain(null), 1300);
+
+      const pointsAfter =
+        typeof newServerPoints === "number"
+          ? newServerPoints
+          : points + safeDelta;
+      const lvl = levelFromPoints(pointsAfter);
+      setSaveToast({
+        kind: "saved",
+        delta: safeDelta,
+        pointsAfter,
+        nextLevelAt: lvl.nextLevelAt,
+        tomorrowStep: computation.result.nextStep,
+      });
+
       await refreshHistory();
       await refreshTrends();
       window.setTimeout(() => {
-        router.push(`/home?gained=${Number.isFinite(delta) ? delta : 10}`);
+        router.push(`/home?gained=${safeDelta}`);
       }, 900);
     } catch (e) {
       setSaveState({
         kind: "error",
         message: saveErrorMessage(e),
+      });
+      setSaveToast({
+        kind: "error",
+        delta: 10,
+        pointsAfter: points + 10,
+        nextLevelAt: levelFromPoints(points + 10).nextLevelAt,
+        tomorrowStep: computation.result.nextStep,
       });
     }
   };
@@ -298,6 +344,80 @@ export function StateCheckClient() {
 
   return (
     <div className="w-full max-w-2xl mx-auto">
+      {saveToast && (
+        <div className="fixed inset-x-0 bottom-4 z-50 px-4">
+          <div className="mx-auto w-full max-w-2xl">
+            <div
+              className={[
+                "rounded-2xl border shadow-lg backdrop-blur bg-white/95 px-5 py-4",
+                saveToast.kind === "saved"
+                  ? "border-emerald-200"
+                  : saveToast.kind === "error"
+                    ? "border-rose-200"
+                    : "border-gray-200",
+                "animate-[toastIn_180ms_ease-out]",
+              ].join(" ")}
+              role="status"
+              aria-live="polite"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-gray-900">
+                    {saveToast.kind === "saving"
+                      ? "記録中…"
+                      : saveToast.kind === "saved"
+                        ? "記録しました"
+                        : "保存に失敗しました"}
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                    <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 font-semibold text-emerald-900">
+                      +{saveToast.delta}pt
+                    </span>
+                    <span className="text-gray-700">
+                      現在 {Math.max(0, Math.floor(saveToast.pointsAfter))}pt
+                    </span>
+                    <span className="text-gray-500">
+                      {levelFromPoints(saveToast.pointsAfter).level >= 6
+                        ? "（神化）"
+                        : `次まで ${Math.max(0, saveToast.nextLevelAt - Math.floor(saveToast.pointsAfter))}pt`}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                    <div className="text-xs font-semibold text-gray-600 mb-1">
+                      明日の一手
+                    </div>
+                    <div className="text-sm text-gray-900 leading-relaxed">
+                      {saveToast.tomorrowStep}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={closeSaveToast}
+                  className="shrink-0 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
+                >
+                  閉じる
+                </button>
+              </div>
+            </div>
+            <style jsx>{`
+              @keyframes toastIn {
+                0% {
+                  opacity: 0;
+                  transform: translateY(8px);
+                }
+                100% {
+                  opacity: 1;
+                  transform: translateY(0);
+                }
+              }
+            `}</style>
+          </div>
+        </div>
+      )}
       {/* Hero */}
       <section className="mb-8 sm:mb-10">
         <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
