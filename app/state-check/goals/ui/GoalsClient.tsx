@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { todayDayKeyJST } from "../../_lib/dayKey";
 
 type GoalMap = {
@@ -23,8 +24,20 @@ type TodayProgress = {
   updatedAt: string; // ISO
 };
 
+type GoalDraftV1 = {
+  version: 1;
+  small_goal: string;
+  small_goal_purpose: string | null;
+  success_criteria: string | null;
+  updatedAt: string; // ISO
+};
+
 function progressStorageKey(dayKey: string) {
   return `goalProgress:v1:${dayKey}`;
+}
+
+function draftStorageKey() {
+  return "goalDraft:v1";
 }
 
 function clampProgress(n: number) {
@@ -41,14 +54,33 @@ function safeJsonParse<T>(raw: string): T | null {
 }
 
 export function GoalsClient() {
+  const router = useRouter();
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [savedAt, setSavedAt] = React.useState<string | null>(null);
+  const [saveMessage, setSaveMessage] = React.useState<string | null>(null);
 
   const [goal, setGoal] = React.useState<GoalMap | null>(null);
+  const [lastSavedGoal, setLastSavedGoal] = React.useState<GoalMap | null>(null);
+  const [draftRestored, setDraftRestored] = React.useState(false);
+  const [showBackConfirm, setShowBackConfirm] = React.useState(false);
   const dayKey = React.useMemo(() => todayDayKeyJST(), []);
   const [todayProgress, setTodayProgress] = React.useState<number>(0);
+
+  const loadDraft = React.useCallback((): GoalDraftV1 | null => {
+    if (typeof window === "undefined") return null;
+    const raw = window.localStorage.getItem(draftStorageKey());
+    if (!raw) return null;
+    const parsed = safeJsonParse<GoalDraftV1>(raw);
+    if (!parsed || parsed.version !== 1) return null;
+    return parsed;
+  }, []);
+
+  const clearDraft = React.useCallback(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.removeItem(draftStorageKey());
+  }, []);
 
   const fetchGoals = React.useCallback(async () => {
     setLoading(true);
@@ -61,7 +93,7 @@ export function GoalsClient() {
       const json = (await res.json()) as any;
       if (!json?.ok) throw new Error(json?.error ?? "読み込みに失敗しました");
       const first = (json.goals?.[0] ?? null) as GoalMap | null;
-      setGoal(
+      const baseGoal: GoalMap =
         first ?? {
           id: "",
           big_goal: "",
@@ -72,8 +104,36 @@ export function GoalsClient() {
           small_goal_purpose: null,
           success_criteria: null,
           updated_at: new Date().toISOString(),
-        }
-      );
+        };
+
+      const draft = loadDraft();
+      const draftUpdatedAt = draft?.updatedAt
+        ? new Date(draft.updatedAt).getTime()
+        : 0;
+      const baseUpdatedAt = baseGoal.updated_at
+        ? new Date(baseGoal.updated_at).getTime()
+        : 0;
+
+      const shouldApplyDraft = Boolean(draft) && draftUpdatedAt >= baseUpdatedAt;
+      const merged: GoalMap = shouldApplyDraft
+        ? {
+            ...baseGoal,
+            small_goal: String(draft?.small_goal ?? baseGoal.small_goal ?? ""),
+            small_goal_purpose:
+              typeof draft?.small_goal_purpose === "string"
+                ? draft.small_goal_purpose
+                : baseGoal.small_goal_purpose,
+            success_criteria:
+              typeof draft?.success_criteria === "string" ||
+              draft?.success_criteria === null
+                ? draft.success_criteria
+                : baseGoal.success_criteria,
+          }
+        : baseGoal;
+
+      setLastSavedGoal(baseGoal);
+      setGoal(merged);
+      setDraftRestored(shouldApplyDraft);
     } catch (e) {
       const msg =
         e instanceof DOMException && e.name === "AbortError"
@@ -86,7 +146,7 @@ export function GoalsClient() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadDraft]);
 
   React.useEffect(() => {
     void fetchGoals();
@@ -125,11 +185,12 @@ export function GoalsClient() {
   const update = (patch: Partial<GoalMap>) =>
     setGoal((g) => (g ? { ...g, ...patch } : g));
 
-  const save = async () => {
-    if (!goal) return;
+  const save = async (): Promise<boolean> => {
+    if (!goal) return false;
     setSaving(true);
     setError(null);
     setSavedAt(null);
+    setSaveMessage(null);
     try {
       const res = await fetch("/api/goals", {
         method: "POST",
@@ -147,24 +208,70 @@ export function GoalsClient() {
       });
       const json = (await res.json()) as any;
       if (!json?.ok) throw new Error(json?.error ?? "保存に失敗しました");
-      setGoal((prev) => (prev ? { ...prev, ...json.goal } : json.goal));
+      const savedGoal = (json.goal ?? null) as GoalMap | null;
+      if (savedGoal) {
+        setGoal((prev) => (prev ? { ...prev, ...savedGoal } : savedGoal));
+        setLastSavedGoal(savedGoal);
+      }
       setSavedAt(new Date().toLocaleString("ja-JP"));
+      setSaveMessage("小ゴールを保存しました");
+      clearDraft();
+      setDraftRestored(false);
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : "保存に失敗しました");
+      return false;
     } finally {
       setSaving(false);
     }
   };
 
+  const isDirty = React.useMemo(() => {
+    if (!goal) return false;
+    const sg = goal.small_goal ?? "";
+    const sp = goal.small_goal_purpose ?? "";
+    const sc = goal.success_criteria ?? "";
+    if (!lastSavedGoal) {
+      return Boolean(sg.trim() || sp.trim() || sc.trim());
+    }
+    return (
+      sg !== (lastSavedGoal.small_goal ?? "") ||
+      (sp ?? "") !== (lastSavedGoal.small_goal_purpose ?? "") ||
+      (sc ?? "") !== (lastSavedGoal.success_criteria ?? "")
+    );
+  }, [goal, lastSavedGoal]);
+
+  // Auto-save draft for the minimum requirement: never lose in-progress edits.
+  React.useEffect(() => {
+    if (!goal) return;
+    if (typeof window === "undefined") return;
+    const t = window.setTimeout(() => {
+      const payload: GoalDraftV1 = {
+        version: 1,
+        small_goal: goal.small_goal ?? "",
+        small_goal_purpose: goal.small_goal_purpose ?? null,
+        success_criteria: goal.success_criteria ?? null,
+        updatedAt: new Date().toISOString(),
+      };
+      window.localStorage.setItem(draftStorageKey(), JSON.stringify(payload));
+    }, 350);
+    return () => window.clearTimeout(t);
+  }, [goal?.small_goal, goal?.small_goal_purpose, goal?.success_criteria, goal]);
+
   return (
     <div className="w-full max-w-2xl mx-auto">
       <div className="mb-6 flex items-center justify-between gap-3">
-        <Link
+        <a
           href="/state-check"
+          onClick={(e) => {
+            if (!isDirty) return;
+            e.preventDefault();
+            setShowBackConfirm(true);
+          }}
           className="text-sm font-semibold text-gray-700 hover:text-gray-900 underline underline-offset-2"
         >
           ← 診断に戻る
-        </Link>
+        </a>
       </div>
 
       <h1 className="text-2xl sm:text-3xl font-semibold tracking-wide text-gray-900 mb-3">
@@ -180,6 +287,40 @@ export function GoalsClient() {
         </div>
       ) : (
         <div className="space-y-4">
+          {showBackConfirm && isDirty && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-6 py-6 text-sm text-amber-900">
+              未保存の内容があります。どうしますか？
+              <div className="mt-3 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const ok = await save();
+                    if (ok) router.push("/state-check");
+                  }}
+                  className="rounded-xl bg-gray-900 text-white px-4 py-2.5 text-sm font-semibold hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-300"
+                >
+                  保存して戻る
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBackConfirm(false);
+                    router.push("/state-check");
+                  }}
+                  className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
+                >
+                  保存せず戻る
+                </button>
+              </div>
+            </div>
+          )}
+
+          {draftRestored && (
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 px-6 py-4 text-sm text-gray-700">
+              下書きを復元しました。
+            </div>
+          )}
+
           {error && (
             <div className="rounded-2xl border border-red-200 bg-red-50 px-6 py-6 text-sm text-red-900">
               読み込みに失敗しました。{` ${error}`}
@@ -338,7 +479,8 @@ export function GoalsClient() {
 
           {savedAt && (
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-              保存しました（{savedAt}）
+              {(saveMessage ?? "保存しました")}
+              {savedAt ? `（${savedAt}）` : ""}
             </div>
           )}
 
