@@ -22,10 +22,10 @@ export function totalPoints(runs: RunForPoints[]): number {
 export function levelFromPoints(points: number): { level: number; nextLevelAt: number } {
   const p = Math.max(0, Math.floor(points));
   if (p < 30) return { level: 1, nextLevelAt: 30 };
-  if (p < 60) return { level: 2, nextLevelAt: 60 };
-  if (p < 100) return { level: 3, nextLevelAt: 100 };
-  if (p < 150) return { level: 4, nextLevelAt: 150 };
-  if (p < 200) return { level: 5, nextLevelAt: 200 };
-  return { level: 6, nextLevelAt: 200 };
+  if (p < 80) return { level: 2, nextLevelAt: 80 };
+  if (p < 150) return { level: 3, nextLevelAt: 150 };
+  if (p < 250) return { level: 4, nextLevelAt: 250 };
+  if (p < 400) return { level: 5, nextLevelAt: 400 };
+  return { level: 6, nextLevelAt: 400 };
 }
 

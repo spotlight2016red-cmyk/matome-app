@@ -43,7 +43,7 @@ export function AvatarGrowthCard({
             <span className="ui-pill ui-pill-hero">Lv.{Math.max(1, Math.floor(level))}</span>
             <span className="ui-pill">{points}pt</span>
             {level >= 6 ? (
-              <span className="ui-pill">最大Lv</span>
+              <span className="ui-pill">神化</span>
             ) : (
               <span className="ui-pill">次まで {remain}pt</span>
             )}

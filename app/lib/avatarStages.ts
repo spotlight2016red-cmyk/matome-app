@@ -45,7 +45,7 @@ export const avatarStages: AvatarStage[] = [
   {
     level: 6,
     key: "avatar_6",
-    label: "マスター",
+    label: "神化",
     imageSrc: "/avatars/avatar_6.svg",
     message: "攻略法が定着。迷いを減らすための仕組みが自分の中にあります。",
   },

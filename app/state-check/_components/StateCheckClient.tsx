@@ -338,7 +338,7 @@ export function StateCheckClient() {
         {levelUp && (
           <div key={levelUp.key} className="mb-3">
             <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900 animate-[pop_1.6s_ease-out_forwards]">
-              レベルアップ！ Lv.{levelUp.toLevel}
+              LEVEL UP ・ Lv.{levelUp.toLevel}
             </div>
             <style jsx>{`
               @keyframes pop {
