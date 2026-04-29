@@ -8,6 +8,7 @@ import { levelFromPoints, totalPoints } from "@/app/state-check/_lib/points";
 import type { DiagnosisRunSummary } from "@/app/state-check/_components/HistoryList";
 import { AvatarGrowthCard } from "@/app/components/AvatarGrowthCard";
 import { todayDayKeyJST } from "@/app/state-check/_lib/dayKey";
+import type { AvatarType } from "@/app/lib/avatarImage";
 
 export function HomeClient() {
   const router = useRouter();
@@ -15,6 +16,7 @@ export function HomeClient() {
   const [authed, setAuthed] = React.useState<boolean | null>(null);
   const [history, setHistory] = React.useState<DiagnosisRunSummary[]>([]);
   const [serverPoints, setServerPoints] = React.useState<number | null>(null);
+  const [avatarType, setAvatarType] = React.useState<AvatarType>("explorer");
   const [gain, setGain] = React.useState<number | null>(null);
   const [smallGoal, setSmallGoal] = React.useState<string | null>(null);
   const [todayProgress, setTodayProgress] = React.useState<number | null>(null);
@@ -32,21 +34,29 @@ export function HomeClient() {
         if (!ok) {
           setHistory([]);
           setServerPoints(null);
+          setAvatarType("explorer");
           setSmallGoal(null);
           return;
         }
-        const [runsRes, pointsRes] = await Promise.all([
+        const [runsRes, pointsRes, profileRes] = await Promise.all([
           fetch("/api/diagnosis", { method: "GET" }),
           fetch("/api/points", { method: "GET" }),
+          fetch("/api/profile", { method: "GET" }),
         ]);
         const goalsRes = await fetch("/api/goals", { method: "GET" });
         const runsJson = (await runsRes.json()) as any;
         const pointsJson = (await pointsRes.json()) as any;
+        const profileJson = (await profileRes.json()) as any;
         const goalsJson = (await goalsRes.json()) as any;
         if (!mounted) return;
         if (runsJson?.ok) setHistory(runsJson.runs ?? []);
         if (pointsJson?.ok && typeof pointsJson.points === "number") {
           setServerPoints(Number(pointsJson.points));
+        }
+        if (profileJson?.ok && typeof profileJson.avatarType === "string") {
+          setAvatarType(profileJson.avatarType);
+        } else {
+          setAvatarType("explorer");
         }
         if (goalsJson?.ok) {
           const first = (goalsJson.goals?.[0] ?? null) as any;
@@ -60,6 +70,7 @@ export function HomeClient() {
         setAuthed(false);
         setHistory([]);
         setServerPoints(null);
+        setAvatarType("explorer");
         setSmallGoal(null);
       }
     })();
@@ -136,6 +147,7 @@ export function HomeClient() {
             </div>
           )}
           <AvatarGrowthCard
+            avatarType={avatarType}
             level={level}
             points={points}
             nextLevelAt={nextLevelAt}

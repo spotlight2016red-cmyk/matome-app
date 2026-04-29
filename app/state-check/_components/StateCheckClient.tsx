@@ -16,6 +16,7 @@ import { TrendsPanel } from "./TrendsPanel";
 import { levelFromPoints, totalPoints } from "../_lib/points";
 import { supabaseBrowser } from "@/app/lib/supabase/browser";
 import { AvatarGrowthCard } from "@/app/components/AvatarGrowthCard";
+import type { AvatarType } from "@/app/lib/avatarImage";
 
 const POINT_RULES: readonly { label: string; points: number }[] = [
   { label: "診断を記録", points: 10 },
@@ -62,6 +63,7 @@ export function StateCheckClient() {
   const dayKey = React.useMemo(() => todayDayKeyJST(), []);
   const [todayProgress, setTodayProgress] = React.useState<number | null>(null);
   const [serverPoints, setServerPoints] = React.useState<number | null>(null);
+  const [avatarType, setAvatarType] = React.useState<AvatarType>("explorer");
   const [ptGain, setPtGain] = React.useState<null | { delta: number; key: string }>(null);
   const [levelUp, setLevelUp] = React.useState<null | { toLevel: number; key: string }>(null);
   const [saveToast, setSaveToast] = React.useState<null | {
@@ -171,6 +173,20 @@ export function StateCheckClient() {
     }
   }, []);
 
+  const refreshProfile = React.useCallback(async () => {
+    const res = await fetch("/api/profile", { method: "GET" });
+    if (res.status === 401) {
+      setAvatarType("explorer");
+      return;
+    }
+    const json = (await res.json()) as any;
+    if (json?.ok && typeof json.avatarType === "string") {
+      setAvatarType(json.avatarType);
+    } else {
+      setAvatarType("explorer");
+    }
+  }, []);
+
   React.useEffect(() => {
     let mounted = true;
     (async () => {
@@ -185,11 +201,13 @@ export function StateCheckClient() {
           void refreshTrends();
           void refreshGoal();
           void refreshPoints();
+          void refreshProfile();
         } else {
           setHistory([]);
           setTrendState({ recentTendencies: [], recoveryStyles: [] });
           setSmallGoal(null);
           setServerPoints(null);
+          setAvatarType("explorer");
         }
       } catch {
         if (!mounted) return;
@@ -198,12 +216,13 @@ export function StateCheckClient() {
         setTrendState({ recentTendencies: [], recoveryStyles: [] });
         setSmallGoal(null);
         setServerPoints(null);
+        setAvatarType("explorer");
       }
     })();
     return () => {
       mounted = false;
     };
-  }, [refreshGoal, refreshHistory, refreshPoints, refreshTrends]);
+  }, [refreshGoal, refreshHistory, refreshPoints, refreshProfile, refreshTrends]);
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
@@ -491,6 +510,7 @@ export function StateCheckClient() {
         )}
         <div className="mt-4">
           <AvatarGrowthCard
+            avatarType={avatarType}
             level={level}
             points={points}
             nextLevelAt={nextLevelAt}

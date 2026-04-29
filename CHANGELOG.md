@@ -63,6 +63,7 @@ GitHub の [Commits](https://github.com/spotlight2016red-cmyk/matome-app/commits
 | 2026-04 | マイページに今日の一手(NextMove)を1つ表示 | `54ef504` |
 | 2026-04 | avatar_1をjpgへ切替し記録時トーストを追加 | `2a6be12` |
 | 2026-04 | points取得をRPC経由にして0上書きを防ぐ | `089fd94` |
+| 2026-04 | avatar_typeをuser_profilesで永続化し画像を切替 | （次コミット） |
 
 ---
 

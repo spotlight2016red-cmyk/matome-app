@@ -2,14 +2,21 @@
 
 import * as React from "react";
 import { stageFromLevel } from "@/app/lib/avatarStages";
+import {
+  getAvatarFallbackImage,
+  getAvatarImageCandidates,
+  type AvatarType,
+} from "@/app/lib/avatarImage";
 
 export function AvatarGrowthCard({
+  avatarType,
   level,
   points,
   nextLevelAt,
   className,
   compact,
 }: {
+  avatarType?: AvatarType;
   level: number;
   points: number;
   nextLevelAt: number;
@@ -18,6 +25,19 @@ export function AvatarGrowthCard({
 }) {
   const stage = React.useMemo(() => stageFromLevel(level), [level]);
   const remain = Math.max(0, nextLevelAt - points);
+  const fallbackSrc = React.useMemo(() => getAvatarFallbackImage(), []);
+  const candidates = React.useMemo(
+    () => getAvatarImageCandidates(avatarType ?? "explorer", level, { points }),
+    [avatarType, level, points]
+  );
+  const desiredSrc = candidates[0] ?? fallbackSrc;
+  const [imgSrc, setImgSrc] = React.useState(desiredSrc);
+  const idxRef = React.useRef(0);
+
+  React.useEffect(() => {
+    setImgSrc(desiredSrc);
+    idxRef.current = 0;
+  }, [desiredSrc]);
 
   return (
     <section
@@ -30,11 +50,17 @@ export function AvatarGrowthCard({
       <div className="flex items-start gap-4">
         <div className={["shrink-0 rounded-2xl bg-white border border-gray-200 overflow-hidden shadow-sm", compact ? "size-12" : "size-14"].join(" ")}>
           <img
-            src={stage.imageSrc}
-            alt={`avatar_${stage.level}`}
+            src={imgSrc}
+            alt={`avatar_${avatarType ?? "explorer"}_lv${Math.max(1, Math.floor(level))}`}
             className="size-full object-cover"
             width={compact ? 48 : 56}
             height={compact ? 48 : 56}
+            onError={() => {
+              const nextIdx = idxRef.current + 1;
+              idxRef.current = nextIdx;
+              const next = candidates[nextIdx];
+              setImgSrc(next ?? fallbackSrc);
+            }}
           />
         </div>
 
