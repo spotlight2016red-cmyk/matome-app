@@ -94,7 +94,7 @@ export default async function StateCheckHistoryPage() {
           診断履歴
         </h1>
         <p className="text-sm text-gray-700 leading-relaxed mb-6">
-          日付・結果・メモの冒頭・スコアを見返せます。
+          日付ごとに「次の一手」を見返せます（詳細は各カードへ）。
         </p>
 
         {runs.length === 0 ? (

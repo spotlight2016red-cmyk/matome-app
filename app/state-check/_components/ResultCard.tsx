@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import type { StateCheckComputation } from "../_lib/logic";
+import { chooseNextMove } from "../_lib/nextMove";
+import { NextMoveCard } from "./NextMoveCard";
 
 function Badge({ children }: { children: React.ReactNode }) {
   return (
@@ -19,6 +21,18 @@ export function ResultCard({
   onReset: () => void;
 }) {
   const { result, scores, heatMode } = computation;
+  const [excludedMoveIds, setExcludedMoveIds] = React.useState<string[]>([]);
+  const [altUnlocked, setAltUnlocked] = React.useState(false);
+
+  React.useEffect(() => {
+    setExcludedMoveIds([]);
+    setAltUnlocked(false);
+  }, [computation.debug?.chosenId]);
+
+  const move = React.useMemo(
+    () => chooseNextMove(computation, { excludedMoveIds }),
+    [computation, excludedMoveIds]
+  );
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-white shadow-sm px-6 py-6">
@@ -39,21 +53,18 @@ export function ResultCard({
       </div>
 
       <div className="space-y-5">
-        {heatMode && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4">
-            <div className="text-xs font-semibold text-amber-800 mb-1">
-              {heatMode.title}
-            </div>
-            <div className="text-sm sm:text-base text-gray-900 leading-relaxed mb-3">
-              {heatMode.body}
-            </div>
-            <ul className="list-disc pl-5 space-y-1 text-sm sm:text-base text-gray-900">
-              {heatMode.actions.map((x) => (
-                <li key={x}>{x}</li>
-              ))}
-            </ul>
-          </div>
-        )}
+        <NextMoveCard
+          move={move}
+          onDoNow={() => {
+            // The UI goal is commitment; we don't auto-log an event yet.
+          }}
+          onCouldNot={() => setAltUnlocked(true)}
+          showAlternativeButton={altUnlocked}
+          onSuggestAlternative={() => {
+            setExcludedMoveIds((prev) => (prev.includes(move.id) ? prev : [...prev, move.id]));
+          }}
+        />
+
         <div className="rounded-xl bg-gray-50 border border-gray-200 px-4 py-4">
           <div className="text-xs font-semibold text-gray-600 mb-1">
             今の状態の説明
@@ -63,43 +74,63 @@ export function ResultCard({
           </div>
         </div>
 
-        <div className="rounded-xl bg-gray-50 border border-gray-200 px-4 py-4">
-          <div className="text-xs font-semibold text-gray-600 mb-1">
-            今の方程式
-          </div>
-          <div className="text-sm sm:text-base text-gray-900 leading-relaxed">
-            {result.formula}
-          </div>
-        </div>
+        <details className="rounded-xl bg-gray-50 border border-gray-200 px-4 py-4">
+          <summary className="cursor-pointer select-none text-sm font-semibold text-gray-800">
+            詳細を見る（補足）
+          </summary>
+          <div className="mt-4 space-y-4">
+            {heatMode && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4">
+                <div className="text-xs font-semibold text-amber-800 mb-1">
+                  {heatMode.title}
+                </div>
+                <div className="text-sm sm:text-base text-gray-900 leading-relaxed mb-3">
+                  {heatMode.body}
+                </div>
+                {heatMode.actions.length > 0 && (
+                  <ul className="list-disc pl-5 space-y-1 text-sm sm:text-base text-gray-900">
+                    {heatMode.actions.map((x) => (
+                      <li key={x}>{x}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
 
-        <div className="rounded-xl bg-gray-50 border border-gray-200 px-4 py-4">
-          <div className="text-xs font-semibold text-gray-600 mb-2">
-            このまま行くと起こりやすいこと
-          </div>
-          <ul className="list-disc pl-5 space-y-1 text-sm sm:text-base text-gray-900">
-            {result.likely.map((x) => (
-              <li key={x}>{x}</li>
-            ))}
-          </ul>
-        </div>
+            <div className="rounded-xl bg-white border border-gray-200 px-4 py-4">
+              <div className="text-xs font-semibold text-gray-600 mb-1">
+                今の方程式
+              </div>
+              <div className="text-sm sm:text-base text-gray-900 leading-relaxed">
+                {result.formula}
+              </div>
+            </div>
 
-        <div className="rounded-xl bg-gray-900 text-white px-4 py-4">
-          <div className="text-xs font-semibold text-white/80 mb-1">
-            修正するための1手
-          </div>
-          <div className="text-sm sm:text-base leading-relaxed">{result.nextStep}</div>
-        </div>
+            <div className="rounded-xl bg-white border border-gray-200 px-4 py-4">
+              <div className="text-xs font-semibold text-gray-600 mb-2">
+                このまま行くと起こりやすいこと
+              </div>
+              <ul className="list-disc pl-5 space-y-1 text-sm sm:text-base text-gray-900">
+                {result.likely.map((x) => (
+                  <li key={x}>{x}</li>
+                ))}
+              </ul>
+            </div>
 
-        <div className="rounded-xl bg-gray-50 border border-gray-200 px-4 py-4">
-          <div className="text-xs font-semibold text-gray-600 mb-2">
-            早めに戻す具体行動
+            {result.quickActions.length > 0 && (
+              <div className="rounded-xl bg-white border border-gray-200 px-4 py-4">
+                <div className="text-xs font-semibold text-gray-600 mb-2">
+                  早めに戻す具体行動（候補）
+                </div>
+                <ul className="list-disc pl-5 space-y-1 text-sm sm:text-base text-gray-900">
+                  {result.quickActions.map((x) => (
+                    <li key={x}>{x}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
-          <ul className="list-disc pl-5 space-y-1 text-sm sm:text-base text-gray-900">
-            {result.quickActions.map((x) => (
-              <li key={x}>{x}</li>
-            ))}
-          </ul>
-        </div>
+        </details>
       </div>
 
       <div className="mt-6">

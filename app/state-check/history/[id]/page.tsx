@@ -64,54 +64,62 @@ export default async function StateCheckHistoryDetailPage({
         </div>
 
         <div className="mt-4 space-y-4">
-          {(run.heat_mode_title || run.heat_mode_body) && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-6 py-6">
-              <div className="text-xs font-semibold text-amber-800 mb-1">
-                {run.heat_mode_title ?? "熱の活かし方"}
-              </div>
-              {run.heat_mode_body && (
-                <div className="text-sm sm:text-base text-gray-900 leading-relaxed mb-3">
-                  {run.heat_mode_body}
-                </div>
-              )}
-              {asStringArray(run.heat_mode_actions_json).length > 0 && (
-                <ul className="list-disc pl-5 space-y-1 text-sm sm:text-base text-gray-900">
-                  {asStringArray(run.heat_mode_actions_json).map((x) => (
-                    <li key={x}>{x}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-
-          <div className="rounded-2xl border border-gray-200 bg-white shadow-sm px-6 py-6">
-            <div className="text-xs font-semibold text-gray-600 mb-1">
-              状態説明
-            </div>
-            <div className="text-sm sm:text-base text-gray-900 leading-relaxed">
-              {run.result_summary}
-            </div>
-          </div>
-
           <div className="rounded-2xl bg-gray-900 text-white px-6 py-6">
-            <div className="text-xs font-semibold text-white/80 mb-1">
-              修正する1手
-            </div>
+            <div className="text-xs font-semibold text-white/80 mb-1">次の一手</div>
             <div className="text-sm sm:text-base leading-relaxed">
               {run.primary_action}
             </div>
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-white shadow-sm px-6 py-6">
-            <div className="text-xs font-semibold text-gray-600 mb-2">
-              早めに戻す行動
+          <details className="rounded-2xl border border-gray-200 bg-white shadow-sm px-6 py-6">
+            <summary className="cursor-pointer select-none text-sm font-semibold text-gray-900">
+              詳細を見る（補足）
+            </summary>
+
+            <div className="mt-4 space-y-4">
+              {(run.heat_mode_title || run.heat_mode_body) && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-6 py-6">
+                  <div className="text-xs font-semibold text-amber-800 mb-1">
+                    {run.heat_mode_title ?? "熱の活かし方"}
+                  </div>
+                  {run.heat_mode_body && (
+                    <div className="text-sm sm:text-base text-gray-900 leading-relaxed mb-3">
+                      {run.heat_mode_body}
+                    </div>
+                  )}
+                  {asStringArray(run.heat_mode_actions_json).length > 0 && (
+                    <ul className="list-disc pl-5 space-y-1 text-sm sm:text-base text-gray-900">
+                      {asStringArray(run.heat_mode_actions_json).map((x) => (
+                        <li key={x}>{x}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
+              <div className="rounded-2xl border border-gray-200 bg-white px-6 py-6">
+                <div className="text-xs font-semibold text-gray-600 mb-1">
+                  状態説明
+                </div>
+                <div className="text-sm sm:text-base text-gray-900 leading-relaxed">
+                  {run.result_summary}
+                </div>
+              </div>
+
+              {asStringArray(run.recovery_actions_json).length > 0 && (
+                <div className="rounded-2xl border border-gray-200 bg-white px-6 py-6">
+                  <div className="text-xs font-semibold text-gray-600 mb-2">
+                    戻す行動（候補）
+                  </div>
+                  <ul className="list-disc pl-5 space-y-1 text-sm sm:text-base text-gray-900">
+                    {asStringArray(run.recovery_actions_json).map((x) => (
+                      <li key={x}>{x}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
-            <ul className="list-disc pl-5 space-y-1 text-sm sm:text-base text-gray-900">
-              {asStringArray(run.recovery_actions_json).map((x) => (
-                <li key={x}>{x}</li>
-              ))}
-            </ul>
-          </div>
+          </details>
 
           <div className="rounded-2xl border border-gray-200 bg-white shadow-sm px-6 py-6">
             <div className="text-xs font-semibold text-gray-600 mb-2">

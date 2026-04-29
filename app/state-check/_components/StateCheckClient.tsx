@@ -3,6 +3,7 @@
 import * as React from "react";
 import { STATE_CHECK_QUESTIONS } from "../_lib/questions";
 import { computeStateCheck, isAllAnswered } from "../_lib/logic";
+import { chooseNextMove } from "../_lib/nextMove";
 import type { AnswerMap, QuestionOptionId } from "../_lib/types";
 import { QuestionCard } from "./QuestionCard";
 import { ResultCard } from "./ResultCard";
@@ -73,6 +74,11 @@ export function StateCheckClient() {
     if (mode !== "result") return null;
     return computeStateCheck(answers);
   }, [answers, mode]);
+
+  const nextMove = React.useMemo(() => {
+    if (!computation) return null;
+    return chooseNextMove(computation);
+  }, [computation]);
 
   const refreshHistory = React.useCallback(async () => {
     const res = await fetch("/api/diagnosis", { method: "GET" });
@@ -153,6 +159,7 @@ export function StateCheckClient() {
     if (!computation) return;
     setSaveState({ kind: "saving" });
     try {
+      const move = nextMove ?? chooseNextMove(computation);
       const payload = {
         run_kind: runKind,
         result_type: computation.result.name,
@@ -163,7 +170,7 @@ export function StateCheckClient() {
         heat_score: computation.scores.heat,
         answers_json: answers,
         result_summary: computation.result.description,
-        primary_action: computation.result.nextStep,
+        primary_action: move.label,
         recovery_actions_json: computation.result.quickActions,
         heat_mode_title: computation.heatMode?.title ?? null,
         heat_mode_body: computation.heatMode?.body ?? null,

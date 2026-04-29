@@ -19,6 +19,7 @@ export function DaySummaryEditor({
   const [state, setState] = React.useState<
     "idle" | "saving" | "saved" | "error"
   >("idle");
+  const [altUnlocked, setAltUnlocked] = React.useState(false);
 
   const save = async () => {
     setState("saving");
@@ -46,6 +47,46 @@ export function DaySummaryEditor({
     <div className="rounded-2xl border border-gray-200 bg-white shadow-sm px-6 py-6">
       <div className="text-xs text-gray-500 mb-1">この日のまとめ</div>
       <div className="grid grid-cols-1 gap-3">
+        <div className="rounded-xl bg-gray-900 text-white px-4 py-4">
+          <div className="text-xs font-semibold text-white/80 mb-1">
+            明日の一手（1つだけ）
+          </div>
+          <div className="text-sm sm:text-base leading-relaxed">
+            {(tomorrow ?? "").trim() || "（まだ未入力）"}
+          </div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                // day summary is retrospective; no event logging yet
+              }}
+              disabled={!tomorrow.trim()}
+              className={[
+                "rounded-xl px-4 py-2.5 text-sm font-semibold",
+                "focus:outline-none focus:ring-2 focus:ring-white/30",
+                tomorrow.trim()
+                  ? "bg-white text-gray-900 hover:bg-gray-100"
+                  : "bg-white/20 text-white/60 cursor-not-allowed",
+              ].join(" ")}
+            >
+              {tomorrow.trim() ? `いま「${tomorrow.trim()}」する` : "入力すると押せます"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setAltUnlocked(true)}
+              className="text-sm font-semibold text-white/80 hover:text-white underline underline-offset-2"
+            >
+              押せなかった
+            </button>
+          </div>
+          {altUnlocked && (
+            <div className="mt-3">
+              <div className="text-xs text-white/70 mb-2">
+                別の一手を考えたい場合は、下の入力欄を書き換えて保存してください。
+              </div>
+            </div>
+          )}
+        </div>
         <div>
           <div className="text-xs font-semibold text-gray-600 mb-1">
             今日ズレたこと
