@@ -50,6 +50,7 @@ GitHub の [Commits](https://github.com/spotlight2016red-cmyk/matome-app/commits
 | 2026-04 | Figma 組織図の Next.js 統合・SSR 安全な保存 | `61d8a6e` |
 | 2026-04 | ヘッダー直下に「理念」カードを常時表示 | `1f2b20c` |
 | 2026-04 | 現在地診断ページ（`/state-check`）を追加 | `4e28ee9` |
+| 2026-04 | 次の一手を1つに統一、できなかった時だけ別案を提示 | `7aa9490` |
 
 ---
 
