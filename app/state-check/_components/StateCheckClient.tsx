@@ -15,7 +15,7 @@ import { HistoryList, type DiagnosisRunSummary } from "./HistoryList";
 import { TrendsPanel } from "./TrendsPanel";
 import { levelFromPoints, totalPoints } from "../_lib/points";
 import { supabaseBrowser } from "@/app/lib/supabase/browser";
-import { AvatarStatusCard } from "@/app/components/AvatarStatusCard";
+import { AvatarGrowthCard } from "@/app/components/AvatarGrowthCard";
 import { normalizeAvatarType, type AvatarType } from "@/app/lib/avatarImage";
 
 const POINT_RULES: readonly { label: string; points: number }[] = [
@@ -512,11 +512,12 @@ export function StateCheckClient() {
           </div>
         )}
         <div className="mt-4">
-          <AvatarStatusCard
+          <AvatarGrowthCard
             avatarType={avatarType ?? undefined}
             level={level}
             points={points}
             nextLevelAt={nextLevelAt}
+            variant="status"
           />
         </div>
         <div className="mt-3 text-xs text-gray-600">
