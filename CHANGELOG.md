@@ -66,6 +66,7 @@ GitHub の [Commits](https://github.com/spotlight2016red-cmyk/matome-app/commits
 | 2026-04 | avatar_typeをuser_profilesで永続化し画像を切替 | `b856cc3` |
 | 2026-04 | アバター画像を大きく表示（64px/80px） | `51e495e` |
 | 2026-04 | 初回アバター診断でavatar_typeを確定 | `389c089` |
+| 2026-04 | アバター画像をさらに大きく表示（96px/128px） | `0310358` |
 
 ---
 
