@@ -63,46 +63,11 @@ export default function HomePage() {
           <section className="lg:col-span-2 rounded-3xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur px-6 py-7 sm:px-8 sm:py-8">
             <div className="text-xs text-gray-500 mb-2">今日やること</div>
             <div className="text-xl sm:text-2xl font-semibold text-gray-900 mb-4">
-              今日の状態チェック
+              行動は、今日の一手から
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-              {[
-                ["午前チェック", "今日の土台を作る"],
-                ["気になった時", "違和感を早期に回収する"],
-                ["夜メモ", "戻れた/ズレたを言語化する"],
-              ].map(([t, d]) => (
-                <div
-                  key={t}
-                  className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4"
-                >
-                  <div className="text-sm font-semibold text-gray-900">{t}</div>
-                  <div className="mt-1 text-xs text-gray-600 leading-relaxed">
-                    {d}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href="/state-check"
-                className="inline-flex items-center justify-center rounded-2xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white shadow-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-300"
-              >
-                今日のチェックを始める
-              </Link>
-              <Link
-                href="/state-check/history"
-                className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
-              >
-                履歴を見る
-              </Link>
-              <Link
-                href="/login"
-                className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-900 shadow-sm hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-300"
-              >
-                ログイン（保存を有効化）
-              </Link>
-            </div>
+            <p className="text-sm text-gray-700 leading-relaxed">
+              まずは成長（ポイント/レベル）を見て、次に行動（状態チェック）へ。記録したらまたここに戻って変化を確認できます。
+            </p>
           </section>
 
           <aside className="rounded-3xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur px-6 py-7 sm:px-7 sm:py-8">
