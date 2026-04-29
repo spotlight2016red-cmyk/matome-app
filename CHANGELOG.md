@@ -54,6 +54,7 @@ GitHub の [Commits](https://github.com/spotlight2016red-cmyk/matome-app/commits
 | 2026-04 | 小ゴールをNextMove基準にして進捗を可視化 | `fdc153f` |
 | 2026-04 | ゴール取得失敗時にローディングから抜ける | `8bd0907` |
 | 2026-04 | ゴール整理で小ゴール下書きを自動保存・復元 | `920649e` |
+| 2026-04 | state-checkにゴール確認ボタンを追加 | `84b90dd` |
 
 ---
 
