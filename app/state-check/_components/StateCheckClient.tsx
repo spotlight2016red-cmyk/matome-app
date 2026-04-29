@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { STATE_CHECK_QUESTIONS } from "../_lib/questions";
 import { computeStateCheck, isAllAnswered } from "../_lib/logic";
 import { chooseNextMove } from "../_lib/nextMove";
@@ -48,6 +49,7 @@ function answeredCount(answers: AnswerMap) {
 }
 
 export function StateCheckClient() {
+  const router = useRouter();
   const [answers, setAnswers] = React.useState<AnswerMap>({});
   const [mode, setMode] = React.useState<"form" | "result">("form");
   const [memo, setMemo] = React.useState("");
@@ -277,6 +279,9 @@ export function StateCheckClient() {
       window.setTimeout(() => setPtGain(null), 1300);
       await refreshHistory();
       await refreshTrends();
+      window.setTimeout(() => {
+        router.push(`/home?gained=${Number.isFinite(delta) ? delta : 10}`);
+      }, 900);
     } catch (e) {
       setSaveState({
         kind: "error",
@@ -468,7 +473,18 @@ export function StateCheckClient() {
               ].join(" ")}
             >
               {saveState.kind === "saving" && "保存中…"}
-              {saveState.kind === "saved" && "記録しました +10pt"}
+              {saveState.kind === "saved" && (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span>記録しました +10pt（マイページに戻ります）</span>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/home")}
+                    className="font-semibold underline underline-offset-2"
+                  >
+                    今すぐ戻る
+                  </button>
+                </div>
+              )}
               {saveState.kind === "error" && (
                 <div className="flex flex-wrap items-center gap-2">
                   <span>{`保存に失敗: ${saveState.message}`}</span>

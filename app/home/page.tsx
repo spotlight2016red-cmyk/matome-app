@@ -1,4 +1,5 @@
 import Link from "next/link";
+import * as React from "react";
 import { HomeClient } from "./ui/HomeClient";
 
 export const metadata = {
@@ -54,7 +55,9 @@ export default function HomePage() {
           </div>
         </div>
 
-        <HomeClient />
+        <React.Suspense fallback={null}>
+          <HomeClient />
+        </React.Suspense>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <section className="lg:col-span-2 rounded-3xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur px-6 py-7 sm:px-8 sm:py-8">
