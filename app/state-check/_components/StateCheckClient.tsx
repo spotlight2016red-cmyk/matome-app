@@ -55,6 +55,8 @@ export function StateCheckClient() {
   const [smallGoal, setSmallGoal] = React.useState<string | null>(null);
   const dayKey = React.useMemo(() => todayDayKeyJST(), []);
   const [todayProgress, setTodayProgress] = React.useState<number | null>(null);
+  const [serverPoints, setServerPoints] = React.useState<number | null>(null);
+  const [ptGain, setPtGain] = React.useState<null | { delta: number; key: string }>(null);
   const [trendState, setTrendState] = React.useState<{
     recentTendencies: string[];
     recoveryStyles: string[];
@@ -69,7 +71,10 @@ export function StateCheckClient() {
   const allAnswered = isAllAnswered(answers);
   const done = answeredCount(answers);
 
-  const points = React.useMemo(() => totalPoints(history), [history]);
+  const points = React.useMemo(() => {
+    if (typeof serverPoints === "number") return serverPoints;
+    return totalPoints(history);
+  }, [history, serverPoints]);
   const { level, nextLevelAt } = React.useMemo(
     () => levelFromPoints(points),
     [points]
@@ -128,6 +133,16 @@ export function StateCheckClient() {
     }
   }, []);
 
+  const refreshPoints = React.useCallback(async () => {
+    const res = await fetch("/api/points", { method: "GET" });
+    if (res.status === 401) {
+      setServerPoints(null);
+      return;
+    }
+    const json = (await res.json()) as any;
+    if (json?.ok) setServerPoints(Number(json.points ?? 0));
+  }, []);
+
   React.useEffect(() => {
     let mounted = true;
     (async () => {
@@ -141,10 +156,12 @@ export function StateCheckClient() {
           void refreshHistory();
           void refreshTrends();
           void refreshGoal();
+          void refreshPoints();
         } else {
           setHistory([]);
           setTrendState({ recentTendencies: [], recoveryStyles: [] });
           setSmallGoal(null);
+          setServerPoints(null);
         }
       } catch {
         if (!mounted) return;
@@ -152,12 +169,13 @@ export function StateCheckClient() {
         setHistory([]);
         setTrendState({ recentTendencies: [], recoveryStyles: [] });
         setSmallGoal(null);
+        setServerPoints(null);
       }
     })();
     return () => {
       mounted = false;
     };
-  }, [refreshGoal, refreshHistory, refreshTrends]);
+  }, [refreshGoal, refreshHistory, refreshPoints, refreshTrends]);
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
@@ -238,6 +256,10 @@ export function StateCheckClient() {
       if (!json?.ok) throw new Error(json?.error ?? "保存に失敗しました");
       setSaveState({ kind: "saved" });
       setMemo("");
+      if (typeof json.points === "number") setServerPoints(Number(json.points));
+      const delta = Number(json.points_delta ?? 10);
+      setPtGain({ delta: Number.isFinite(delta) ? delta : 10, key: String(Date.now()) });
+      window.setTimeout(() => setPtGain(null), 1300);
       await refreshHistory();
       await refreshTrends();
     } catch (e) {
@@ -268,6 +290,36 @@ export function StateCheckClient() {
             {authed === false && <span className="ui-pill">未ログイン（保存はログイン後）</span>}
           </div>
         </div>
+        {ptGain && (
+          <div
+            key={ptGain.key}
+            className="mb-3 text-sm font-semibold text-emerald-900"
+          >
+            <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 animate-[fadeUp_1.2s_ease-out_forwards]">
+              +{ptGain.delta}pt
+            </span>
+            <style jsx>{`
+              @keyframes fadeUp {
+                0% {
+                  opacity: 0;
+                  transform: translateY(6px);
+                }
+                15% {
+                  opacity: 1;
+                  transform: translateY(0);
+                }
+                85% {
+                  opacity: 1;
+                  transform: translateY(-2px);
+                }
+                100% {
+                  opacity: 0;
+                  transform: translateY(-6px);
+                }
+              }
+            `}</style>
+          </div>
+        )}
         <div className="mt-4">
           <AvatarGrowthCard
             level={level}

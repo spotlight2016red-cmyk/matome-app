@@ -1,5 +1,6 @@
 import { createDiagnosisRun, listDiagnosisRuns } from "@/app/state-check/_server/diagnosisRepo";
 import { requireUserId } from "@/app/state-check/_server/auth";
+import { incrementMyPoints } from "@/app/state-check/_server/pointsRepo";
 
 function jsonError(message: string, status = 400) {
   return Response.json({ ok: false, error: message }, { status });
@@ -66,7 +67,8 @@ export async function POST(request: Request) {
       note_text: typeof body.note_text === "string" ? body.note_text : null,
     });
 
-    return Response.json({ ok: true, run: created });
+    const newPoints = await incrementMyPoints(10);
+    return Response.json({ ok: true, run: created, points: newPoints, points_delta: 10 });
   } catch (e) {
     return jsonError(e instanceof Error ? e.message : "Unknown error", 500);
   }
