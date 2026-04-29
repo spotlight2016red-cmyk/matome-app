@@ -1,12 +1,13 @@
 import { supabaseServer } from "@/app/lib/supabase/server";
 import type { GoalMapInsert, GoalMapRow } from "./types";
 
-export async function listGoalMaps(params?: { limit?: number }) {
+export async function listGoalMaps(params: { userId: string; limit?: number }) {
   const limit = params?.limit ?? 10;
   const sb = await supabaseServer();
   const { data, error } = await sb
     .from("goal_maps")
     .select("*")
+    .eq("user_id", params.userId)
     .order("updated_at", { ascending: false })
     .limit(limit);
   if (error) throw new Error(error.message);

@@ -54,9 +54,12 @@ export function GoalsClient() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/goals");
+      const controller = new AbortController();
+      const t = window.setTimeout(() => controller.abort(), 8000);
+      const res = await fetch("/api/goals", { signal: controller.signal });
+      window.clearTimeout(t);
       const json = (await res.json()) as any;
-      if (!json?.ok) throw new Error(json?.error ?? "取得に失敗しました");
+      if (!json?.ok) throw new Error(json?.error ?? "読み込みに失敗しました");
       const first = (json.goals?.[0] ?? null) as GoalMap | null;
       setGoal(
         first ?? {
@@ -72,7 +75,14 @@ export function GoalsClient() {
         }
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "取得に失敗しました");
+      const msg =
+        e instanceof DOMException && e.name === "AbortError"
+          ? "読み込みに失敗しました（タイムアウト）"
+          : e instanceof Error
+            ? e.message
+            : "読み込みに失敗しました";
+      setError(msg);
+      setGoal(null);
     } finally {
       setLoading(false);
     }
@@ -164,12 +174,62 @@ export function GoalsClient() {
         小ゴール（今やること）を 1 つだけ決めて、NextMove の基準にします。
       </p>
 
-      {loading || !goal ? (
+      {loading ? (
         <div className="rounded-2xl border border-gray-200 bg-gray-50 px-6 py-6 text-sm text-gray-700">
           読み込み中…
         </div>
       ) : (
         <div className="space-y-4">
+          {error && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-6 py-6 text-sm text-red-900">
+              読み込みに失敗しました。{` ${error}`}
+              <div className="mt-3 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => void fetchGoals()}
+                  className="rounded-xl bg-gray-900 text-white px-4 py-2.5 text-sm font-semibold hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-300"
+                >
+                  再読み込み
+                </button>
+                {String(error).toLowerCase().includes("unauthorized") && (
+                  <Link
+                    href="/login"
+                    className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
+                  >
+                    ログインへ
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
+
+          {!goal ? (
+            <div className="rounded-2xl border border-gray-200 bg-white shadow-sm px-6 py-6 text-sm text-gray-700">
+              まだ小ゴールがありません。まず1つ決めましょう。
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setGoal({
+                      id: "",
+                      big_goal: "",
+                      middle_goal: "",
+                      small_goal: "",
+                      big_goal_purpose: null,
+                      middle_goal_purpose: null,
+                      small_goal_purpose: null,
+                      success_criteria: null,
+                      updated_at: new Date().toISOString(),
+                    })
+                  }
+                  className="rounded-xl bg-gray-900 text-white px-4 py-2.5 text-sm font-semibold hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-300"
+                >
+                  小ゴールを入力する
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
           <section className="rounded-2xl border border-gray-200 bg-white shadow-sm px-6 py-6">
             <div className="text-xs text-gray-500 mb-1">
               NextMove の基準（今やること）
@@ -177,6 +237,11 @@ export function GoalsClient() {
             <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-3">
               小ゴール（1つだけ）
             </h2>
+            {!goal.small_goal.trim() && (
+              <div className="mb-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                まだ小ゴールがありません。まず1つ決めましょう。
+              </div>
+            )}
             <input
               value={goal.small_goal}
               onChange={(e) => update({ small_goal: e.target.value })}
@@ -271,11 +336,6 @@ export function GoalsClient() {
             </div>
           </details>
 
-          {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-              {error}
-            </div>
-          )}
           {savedAt && (
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
               保存しました（{savedAt}）
@@ -296,6 +356,8 @@ export function GoalsClient() {
           >
             {saving ? "保存中…" : "保存する"}
           </button>
+            </>
+          )}
         </div>
       )}
     </div>

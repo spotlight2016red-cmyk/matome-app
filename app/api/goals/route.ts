@@ -9,7 +9,7 @@ export async function GET() {
   try {
     const userId = await requireUserId();
     if (!userId) return jsonError("Unauthorized", 401);
-    const goals = await listGoalMaps({ limit: 10 });
+    const goals = await listGoalMaps({ userId, limit: 10 });
     return Response.json({ ok: true, goals });
   } catch (e) {
     return jsonError(e instanceof Error ? e.message : "Unknown error", 500);
