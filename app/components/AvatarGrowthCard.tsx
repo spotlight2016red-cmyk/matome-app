@@ -47,19 +47,19 @@ export function AvatarGrowthCard({
         className ?? "",
       ].join(" ")}
     >
-      <div className={["flex items-start", compact ? "gap-4" : "gap-5"].join(" ")}>
+      <div className={["flex items-start", compact ? "gap-5" : "gap-6"].join(" ")}>
         <div
           className={[
-            "shrink-0 rounded-2xl bg-white border border-gray-200 overflow-hidden shadow-sm",
-            compact ? "size-16" : "size-20",
+            "shrink-0 rounded-3xl bg-white border border-gray-200 overflow-hidden shadow-lg ring-2 ring-gray-100",
+            compact ? "size-24" : "size-32",
           ].join(" ")}
         >
           <img
             src={imgSrc}
             alt={`avatar_${avatarType ?? "explorer"}_lv${Math.max(1, Math.floor(level))}`}
             className="size-full object-cover"
-            width={compact ? 64 : 80}
-            height={compact ? 64 : 80}
+            width={compact ? 96 : 128}
+            height={compact ? 96 : 128}
             onError={() => {
               const nextIdx = idxRef.current + 1;
               idxRef.current = nextIdx;
