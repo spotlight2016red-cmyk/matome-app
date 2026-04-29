@@ -16,7 +16,7 @@ import { TrendsPanel } from "./TrendsPanel";
 import { levelFromPoints, totalPoints } from "../_lib/points";
 import { supabaseBrowser } from "@/app/lib/supabase/browser";
 import { AvatarGrowthCard } from "@/app/components/AvatarGrowthCard";
-import type { AvatarType } from "@/app/lib/avatarImage";
+import { normalizeAvatarType, type AvatarType } from "@/app/lib/avatarImage";
 
 const POINT_RULES: readonly { label: string; points: number }[] = [
   { label: "診断を記録", points: 10 },
@@ -63,7 +63,7 @@ export function StateCheckClient() {
   const dayKey = React.useMemo(() => todayDayKeyJST(), []);
   const [todayProgress, setTodayProgress] = React.useState<number | null>(null);
   const [serverPoints, setServerPoints] = React.useState<number | null>(null);
-  const [avatarType, setAvatarType] = React.useState<AvatarType>("explorer");
+  const [avatarType, setAvatarType] = React.useState<AvatarType | null>(null);
   const [ptGain, setPtGain] = React.useState<null | { delta: number; key: string }>(null);
   const [levelUp, setLevelUp] = React.useState<null | { toLevel: number; key: string }>(null);
   const [saveToast, setSaveToast] = React.useState<null | {
@@ -134,7 +134,7 @@ export function StateCheckClient() {
     const first = (json.goals?.[0] ?? null) as any;
     const sg = typeof first?.small_goal === "string" ? first.small_goal.trim() : "";
     setSmallGoal(sg || null);
-  }, []);
+  }, [router]);
 
   const refreshHistory = React.useCallback(async () => {
     const res = await fetch("/api/diagnosis", { method: "GET" });
@@ -176,16 +176,19 @@ export function StateCheckClient() {
   const refreshProfile = React.useCallback(async () => {
     const res = await fetch("/api/profile", { method: "GET" });
     if (res.status === 401) {
-      setAvatarType("explorer");
+      setAvatarType(null);
       return;
     }
     const json = (await res.json()) as any;
-    if (json?.ok && typeof json.avatarType === "string") {
-      setAvatarType(json.avatarType);
-    } else {
-      setAvatarType("explorer");
+    if (!json?.ok) return;
+    const at = json.avatarType;
+    if (at == null) {
+      setAvatarType(null);
+      router.replace("/avatar-diagnosis?next=/state-check");
+      return;
     }
-  }, []);
+    if (typeof at === "string") setAvatarType(normalizeAvatarType(at));
+  }, [router]);
 
   React.useEffect(() => {
     let mounted = true;
@@ -207,7 +210,7 @@ export function StateCheckClient() {
           setTrendState({ recentTendencies: [], recoveryStyles: [] });
           setSmallGoal(null);
           setServerPoints(null);
-          setAvatarType("explorer");
+          setAvatarType(null);
         }
       } catch {
         if (!mounted) return;
@@ -216,7 +219,7 @@ export function StateCheckClient() {
         setTrendState({ recentTendencies: [], recoveryStyles: [] });
         setSmallGoal(null);
         setServerPoints(null);
-        setAvatarType("explorer");
+        setAvatarType(null);
       }
     })();
     return () => {
@@ -510,7 +513,7 @@ export function StateCheckClient() {
         )}
         <div className="mt-4">
           <AvatarGrowthCard
-            avatarType={avatarType}
+            avatarType={avatarType ?? undefined}
             level={level}
             points={points}
             nextLevelAt={nextLevelAt}

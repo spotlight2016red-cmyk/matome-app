@@ -8,7 +8,7 @@ import { levelFromPoints, totalPoints } from "@/app/state-check/_lib/points";
 import type { DiagnosisRunSummary } from "@/app/state-check/_components/HistoryList";
 import { AvatarGrowthCard } from "@/app/components/AvatarGrowthCard";
 import { todayDayKeyJST } from "@/app/state-check/_lib/dayKey";
-import type { AvatarType } from "@/app/lib/avatarImage";
+import { normalizeAvatarType, type AvatarType } from "@/app/lib/avatarImage";
 
 export function HomeClient() {
   const router = useRouter();
@@ -16,7 +16,7 @@ export function HomeClient() {
   const [authed, setAuthed] = React.useState<boolean | null>(null);
   const [history, setHistory] = React.useState<DiagnosisRunSummary[]>([]);
   const [serverPoints, setServerPoints] = React.useState<number | null>(null);
-  const [avatarType, setAvatarType] = React.useState<AvatarType>("explorer");
+  const [avatarType, setAvatarType] = React.useState<AvatarType | null>(null);
   const [gain, setGain] = React.useState<number | null>(null);
   const [smallGoal, setSmallGoal] = React.useState<string | null>(null);
   const [todayProgress, setTodayProgress] = React.useState<number | null>(null);
@@ -34,7 +34,7 @@ export function HomeClient() {
         if (!ok) {
           setHistory([]);
           setServerPoints(null);
-          setAvatarType("explorer");
+          setAvatarType(null);
           setSmallGoal(null);
           return;
         }
@@ -53,10 +53,16 @@ export function HomeClient() {
         if (pointsJson?.ok && typeof pointsJson.points === "number") {
           setServerPoints(Number(pointsJson.points));
         }
-        if (profileJson?.ok && typeof profileJson.avatarType === "string") {
-          setAvatarType(profileJson.avatarType);
-        } else {
-          setAvatarType("explorer");
+        if (profileJson?.ok) {
+          const at = profileJson.avatarType;
+          if (at == null) {
+            setAvatarType(null);
+            router.replace("/avatar-diagnosis?next=/home");
+          } else if (typeof at === "string") {
+            setAvatarType(normalizeAvatarType(at));
+          } else {
+            setAvatarType(null);
+          }
         }
         if (goalsJson?.ok) {
           const first = (goalsJson.goals?.[0] ?? null) as any;
@@ -70,7 +76,7 @@ export function HomeClient() {
         setAuthed(false);
         setHistory([]);
         setServerPoints(null);
-        setAvatarType("explorer");
+        setAvatarType(null);
         setSmallGoal(null);
       }
     })();
@@ -147,7 +153,7 @@ export function HomeClient() {
             </div>
           )}
           <AvatarGrowthCard
-            avatarType={avatarType}
+            avatarType={avatarType ?? undefined}
             level={level}
             points={points}
             nextLevelAt={nextLevelAt}
@@ -170,6 +176,12 @@ export function HomeClient() {
                 className="inline-flex w-full sm:w-auto items-center justify-center rounded-2xl border border-gray-200 bg-white px-5 py-4 text-sm sm:text-base font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
               >
                 ゴールを確認
+              </Link>
+              <Link
+                href="/avatar-diagnosis?redo=1&next=/home"
+                className="inline-flex w-full sm:w-auto items-center justify-center rounded-2xl border border-gray-200 bg-white px-5 py-4 text-sm sm:text-base font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
+              >
+                アバター再診断
               </Link>
             </div>
           </section>
