@@ -16,6 +16,10 @@ import { levelFromPoints, totalPoints } from "../_lib/points";
 import { supabaseBrowser } from "@/app/lib/supabase/browser";
 import { AvatarGrowthCard } from "@/app/components/AvatarGrowthCard";
 
+const POINT_RULES: readonly { label: string; points: number }[] = [
+  { label: "診断を記録", points: 10 },
+];
+
 function saveErrorMessage(e: unknown): string {
   if (e instanceof Error) {
     const m = e.message || "保存に失敗しました";
@@ -328,6 +332,13 @@ export function StateCheckClient() {
             compact
           />
         </div>
+        <div className="mt-3 text-xs text-gray-600">
+          {POINT_RULES.map((r) => (
+            <div key={r.label}>
+              {r.label}：+{r.points}pt
+            </div>
+          ))}
+        </div>
         <p className="text-sm sm:text-base text-gray-700 leading-relaxed mb-3">
           いくつかの質問に答えるだけで、今どこにいて、このままだとどうなりやすいか、そして次に何を整えると良いかが分かります。
         </p>
@@ -404,6 +415,7 @@ export function StateCheckClient() {
             onChange={setMemo}
             onSave={handleSaveThisRun}
             disabled={saveState.kind === "saving"}
+            pointsHint="記録すると +10pt"
           />
 
           {saveState.kind !== "idle" && (
@@ -418,7 +430,7 @@ export function StateCheckClient() {
               ].join(" ")}
             >
               {saveState.kind === "saving" && "保存中…"}
-              {saveState.kind === "saved" && "記録しました。"}
+              {saveState.kind === "saved" && "記録しました +10pt"}
               {saveState.kind === "error" && (
                 <div className="flex flex-wrap items-center gap-2">
                   <span>{`保存に失敗: ${saveState.message}`}</span>

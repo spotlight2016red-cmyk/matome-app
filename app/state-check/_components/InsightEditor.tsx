@@ -7,11 +7,13 @@ export function InsightEditor({
   onChange,
   onSave,
   disabled,
+  pointsHint,
 }: {
   value: string;
   onChange: (next: string) => void;
   onSave: () => void;
   disabled?: boolean;
+  pointsHint?: string;
 }) {
   return (
     <section className="rounded-2xl border border-gray-200 bg-white shadow-sm px-6 py-6">
@@ -43,6 +45,11 @@ export function InsightEditor({
         <div className="text-xs text-gray-500">
           「診断履歴」に一緒に保存されます。
         </div>
+        {pointsHint && (
+          <div className="text-xs text-gray-500">
+            {pointsHint}
+          </div>
+        )}
         <button
           type="button"
           onClick={onSave}
