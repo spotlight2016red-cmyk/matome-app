@@ -51,6 +51,7 @@ GitHub の [Commits](https://github.com/spotlight2016red-cmyk/matome-app/commits
 | 2026-04 | ヘッダー直下に「理念」カードを常時表示 | `1f2b20c` |
 | 2026-04 | 現在地診断ページ（`/state-check`）を追加 | `4e28ee9` |
 | 2026-04 | 次の一手を1つに統一、できなかった時だけ別案を提示 | `7aa9490` |
+| 2026-04 | 小ゴールをNextMove基準にして進捗を可視化 | `fdc153f` |
 
 ---
 
