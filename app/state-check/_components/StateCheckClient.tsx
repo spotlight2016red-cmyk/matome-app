@@ -166,7 +166,9 @@ export function StateCheckClient() {
       return;
     }
     const json = (await res.json()) as any;
-    if (json?.ok) setServerPoints(Number(json.points ?? 0));
+    if (json?.ok && typeof json.points === "number") {
+      setServerPoints(Number(json.points));
+    }
   }, []);
 
   React.useEffect(() => {

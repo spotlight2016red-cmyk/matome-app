@@ -45,7 +45,9 @@ export function HomeClient() {
         const goalsJson = (await goalsRes.json()) as any;
         if (!mounted) return;
         if (runsJson?.ok) setHistory(runsJson.runs ?? []);
-        if (pointsJson?.ok) setServerPoints(Number(pointsJson.points ?? 0));
+        if (pointsJson?.ok && typeof pointsJson.points === "number") {
+          setServerPoints(Number(pointsJson.points));
+        }
         if (goalsJson?.ok) {
           const first = (goalsJson.goals?.[0] ?? null) as any;
           const sg = typeof first?.small_goal === "string" ? first.small_goal.trim() : "";
