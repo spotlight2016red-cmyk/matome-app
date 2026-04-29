@@ -8,6 +8,7 @@ export type NextMove = {
     | "result.nextStep"
     | "result.quickActions"
     | "heatMode.actions"
+    | "goal.small_goal"
     | "fallback";
 };
 
@@ -48,7 +49,10 @@ type Candidate = {
   priority: number;
 };
 
-function buildCandidates(computation: StateCheckComputation): Candidate[] {
+function buildCandidates(
+  computation: StateCheckComputation,
+  opts?: { smallGoal?: string | null; todayProgress?: number | null }
+): Candidate[] {
   const primary = computation.result.nextStep;
   const quick = computation.result.quickActions ?? [];
   const heatActions = computation.heatMode?.actions ?? [];
@@ -64,11 +68,25 @@ function buildCandidates(computation: StateCheckComputation): Candidate[] {
   // Priority: always keep UI at "one thing", but the choice order matters.
   // 1) Recovery-first (reduce/restore)
   // 2) Overchoice / heat+confusion (narrow down)
-  // 3) Default primary nextStep
+  // 3) Goal context (when it's safe to act)
+  // 4) Default primary nextStep
   // 4) Then other suggestions as fallback pool
   const pool = uniqueNonEmpty([primary, ...quick, ...heatActions]);
 
   const candidates: Candidate[] = [];
+
+  const smallGoal = normalizeText(String(opts?.smallGoal ?? ""));
+  const todayProgress = clampProgress(Number(opts?.todayProgress ?? 0));
+  if (!highRecovery && smallGoal) {
+    // If the user has a "what I'm doing now" goal, try to turn it into the next move.
+    // But don't override "narrow down" states (confusion/overchoice).
+    const goalMove = `小ゴールを進める：${smallGoal}`;
+    const goalPriority = confusionHigh || Boolean(signals.optionsTooMany) ? 80 : 10;
+    if (todayProgress < 100) {
+      candidates.push({ label: goalMove, source: "goal.small_goal", priority: goalPriority });
+    }
+  }
+
   for (const label of pool) {
     const source: Candidate["source"] =
       label === normalizeText(primary)
@@ -97,10 +115,13 @@ function buildCandidates(computation: StateCheckComputation): Candidate[] {
 
 export function chooseNextMove(
   computation: StateCheckComputation,
-  opts?: { excludedMoveIds?: readonly string[] }
+  opts?: {
+    excludedMoveIds?: readonly string[];
+    goal?: { smallGoal?: string | null; todayProgress?: number | null };
+  }
 ): NextMove {
   const excluded = new Set((opts?.excludedMoveIds ?? []).filter(Boolean));
-  const candidates = buildCandidates(computation);
+  const candidates = buildCandidates(computation, opts?.goal);
 
   let idx = 0;
   for (const c of candidates) {
@@ -121,5 +142,10 @@ export function chooseNextMove(
     ctaLabel: `いま「${fallbackLabel}」する`,
     source: "fallback",
   };
+}
+
+function clampProgress(n: number) {
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(100, Math.round(n)));
 }
 

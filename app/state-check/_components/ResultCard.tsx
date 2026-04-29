@@ -15,9 +15,11 @@ function Badge({ children }: { children: React.ReactNode }) {
 
 export function ResultCard({
   computation,
+  goal,
   onReset,
 }: {
   computation: StateCheckComputation;
+  goal?: { smallGoal?: string | null; todayProgress?: number | null };
   onReset: () => void;
 }) {
   const { result, scores, heatMode } = computation;
@@ -30,8 +32,8 @@ export function ResultCard({
   }, [computation.debug?.chosenId]);
 
   const move = React.useMemo(
-    () => chooseNextMove(computation, { excludedMoveIds }),
-    [computation, excludedMoveIds]
+    () => chooseNextMove(computation, { excludedMoveIds, goal }),
+    [computation, excludedMoveIds, goal]
   );
 
   return (

@@ -4,6 +4,7 @@ import * as React from "react";
 import { STATE_CHECK_QUESTIONS } from "../_lib/questions";
 import { computeStateCheck, isAllAnswered } from "../_lib/logic";
 import { chooseNextMove } from "../_lib/nextMove";
+import { todayDayKeyJST } from "../_lib/dayKey";
 import type { AnswerMap, QuestionOptionId } from "../_lib/types";
 import { QuestionCard } from "./QuestionCard";
 import { ResultCard } from "./ResultCard";
@@ -50,6 +51,9 @@ export function StateCheckClient() {
   );
   const [authed, setAuthed] = React.useState<boolean | null>(null);
   const [history, setHistory] = React.useState<DiagnosisRunSummary[]>([]);
+  const [smallGoal, setSmallGoal] = React.useState<string | null>(null);
+  const dayKey = React.useMemo(() => todayDayKeyJST(), []);
+  const [todayProgress, setTodayProgress] = React.useState<number | null>(null);
   const [trendState, setTrendState] = React.useState<{
     recentTendencies: string[];
     recoveryStyles: string[];
@@ -77,8 +81,26 @@ export function StateCheckClient() {
 
   const nextMove = React.useMemo(() => {
     if (!computation) return null;
-    return chooseNextMove(computation);
-  }, [computation]);
+    return chooseNextMove(computation, {
+      goal: { smallGoal, todayProgress },
+    });
+  }, [computation, smallGoal, todayProgress]);
+
+  const refreshGoal = React.useCallback(async () => {
+    const res = await fetch("/api/goals", { method: "GET" });
+    if (res.status === 401) {
+      setSmallGoal(null);
+      return;
+    }
+    const json = (await res.json()) as any;
+    if (!json?.ok) {
+      setSmallGoal(null);
+      return;
+    }
+    const first = (json.goals?.[0] ?? null) as any;
+    const sg = typeof first?.small_goal === "string" ? first.small_goal.trim() : "";
+    setSmallGoal(sg || null);
+  }, []);
 
   const refreshHistory = React.useCallback(async () => {
     const res = await fetch("/api/diagnosis", { method: "GET" });
@@ -117,21 +139,45 @@ export function StateCheckClient() {
         if (ok) {
           void refreshHistory();
           void refreshTrends();
+          void refreshGoal();
         } else {
           setHistory([]);
           setTrendState({ recentTendencies: [], recoveryStyles: [] });
+          setSmallGoal(null);
         }
       } catch {
         if (!mounted) return;
         setAuthed(false);
         setHistory([]);
         setTrendState({ recentTendencies: [], recoveryStyles: [] });
+        setSmallGoal(null);
       }
     })();
     return () => {
       mounted = false;
     };
-  }, [refreshHistory, refreshTrends]);
+  }, [refreshGoal, refreshHistory, refreshTrends]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = window.localStorage.getItem(`goalProgress:v1:${dayKey}`);
+    if (!raw) {
+      setTodayProgress(0);
+      return;
+    }
+    try {
+      const parsed = JSON.parse(raw) as any;
+      if (parsed?.version === 1 && parsed?.dayKey === dayKey) {
+        const p = Number(parsed.progress ?? 0);
+        const clamped = Math.max(0, Math.min(100, Math.round(p)));
+        setTodayProgress(clamped);
+        return;
+      }
+    } catch {
+      // ignore
+    }
+    setTodayProgress(0);
+  }, [dayKey]);
 
   const handlePick = React.useCallback(
     (questionId: string, optionId: QuestionOptionId) => {
@@ -159,7 +205,11 @@ export function StateCheckClient() {
     if (!computation) return;
     setSaveState({ kind: "saving" });
     try {
-      const move = nextMove ?? chooseNextMove(computation);
+      const move =
+        nextMove ??
+        chooseNextMove(computation, {
+          goal: { smallGoal, todayProgress },
+        });
       const payload = {
         run_kind: runKind,
         result_type: computation.result.name,
@@ -237,7 +287,11 @@ export function StateCheckClient() {
 
       {mode === "result" && computation ? (
         <div className="space-y-8">
-          <ResultCard computation={computation} onReset={handleReset} />
+          <ResultCard
+            computation={computation}
+            goal={{ smallGoal, todayProgress }}
+            onReset={handleReset}
+          />
 
           <section className="rounded-2xl border border-gray-200 bg-white shadow-sm px-6 py-6">
             <div className="text-xs text-gray-500 mb-1">利用タイミング</div>
