@@ -69,7 +69,7 @@ GitHub の [Commits](https://github.com/spotlight2016red-cmyk/matome-app/commits
 | 2026-04 | アバター画像をさらに大きく表示（96px/128px） | `0310358` |
 | 2026-04 | アバター画像をレスポンシブに拡大（96-112px/168-192px） | `a9581f5` |
 | 2026-04 | state-checkのアバターを独立ステータス枠に変更 | `cdef3e8` |
-| 2026-04 | state-checkでAvatarGrowthCardを主役表示に統一 | （次コミット） |
+| 2026-04 | state-checkでAvatarGrowthCardを主役表示に統一 | `df75754` |
 
 ---
 
