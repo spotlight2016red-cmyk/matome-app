@@ -61,6 +61,7 @@ GitHub の [Commits](https://github.com/spotlight2016red-cmyk/matome-app/commits
 | 2026-04 | ポイント帯のレベル定義をLV1-5+神化に更新 | `1a29fe6` |
 | 2026-04 | 成長(マイページ)を主導線にして行動後に戻す | `52fe98e` |
 | 2026-04 | マイページに今日の一手(NextMove)を1つ表示 | `54ef504` |
+| 2026-04 | avatar_1をjpgへ切替し記録時トーストを追加 | `2a6be12` |
 
 ---
 
