@@ -454,6 +454,26 @@ export function StateCheckClient() {
             </div>
           )}
         </div>
+        <div className="mb-3 flex flex-wrap gap-2">
+          <Link
+            href="/home"
+            className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
+          >
+            マイページへ
+          </Link>
+          <Link
+            href="/state-check/goals"
+            className={[
+              "inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-semibold",
+              "focus:outline-none focus:ring-2 focus:ring-gray-300",
+              smallGoal?.trim()
+                ? "border border-gray-200 bg-white text-gray-900 shadow-sm hover:bg-gray-50"
+                : "bg-gray-900 text-white shadow-md hover:bg-gray-800",
+            ].join(" ")}
+          >
+            {smallGoal?.trim() ? "ゴールを確認" : "まず小ゴールを決める"}
+          </Link>
+        </div>
         {ptGain && (
           <div
             key={ptGain.key}
@@ -530,21 +550,6 @@ export function StateCheckClient() {
         <p className="text-sm sm:text-base text-gray-700 leading-relaxed mb-3">
           いくつかの質問に答えるだけで、今どこにいて、このままだとどうなりやすいか、そして次に何を整えると良いかが分かります。
         </p>
-        <div className="mb-3">
-          <Link
-            href="/state-check/goals"
-            className={[
-              "inline-flex w-full sm:w-auto items-center justify-center rounded-2xl px-5 py-4",
-              "text-sm sm:text-base font-semibold",
-              "focus:outline-none focus:ring-2 focus:ring-gray-300",
-              smallGoal?.trim()
-                ? "border border-gray-200 bg-white text-gray-900 shadow-sm hover:bg-gray-50"
-                : "bg-gray-900 text-white shadow-md hover:bg-gray-800",
-            ].join(" ")}
-          >
-            {smallGoal?.trim() ? "ゴールを確認" : "まず小ゴールを決める"}
-          </Link>
-        </div>
         <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
           <p className="text-sm text-gray-700 leading-relaxed">
             これは性格診断ではなく、“今の状態”を整理するためのものです。
