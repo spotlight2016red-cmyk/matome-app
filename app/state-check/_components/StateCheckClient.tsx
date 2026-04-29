@@ -15,7 +15,7 @@ import { HistoryList, type DiagnosisRunSummary } from "./HistoryList";
 import { TrendsPanel } from "./TrendsPanel";
 import { levelFromPoints, totalPoints } from "../_lib/points";
 import { supabaseBrowser } from "@/app/lib/supabase/browser";
-import { AvatarGrowthCard } from "@/app/components/AvatarGrowthCard";
+import { AvatarStatusCard } from "@/app/components/AvatarStatusCard";
 import { normalizeAvatarType, type AvatarType } from "@/app/lib/avatarImage";
 
 const POINT_RULES: readonly { label: string; points: number }[] = [
@@ -448,11 +448,11 @@ export function StateCheckClient() {
           <h1 className="text-2xl sm:text-3xl font-semibold tracking-wide text-gray-900">
             いまの自分の状態を整理する
           </h1>
-          <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-600">
-            <span className="ui-pill ui-pill-hero">Lv.{level}</span>
-            <span className="ui-pill">{points}pt / 次 {nextLevelAt}pt</span>
-            {authed === false && <span className="ui-pill">未ログイン（保存はログイン後）</span>}
-          </div>
+          {authed === false && (
+            <div className="text-[11px] text-gray-600">
+              <span className="ui-pill">未ログイン（保存はログイン後）</span>
+            </div>
+          )}
         </div>
         {ptGain && (
           <div
@@ -512,12 +512,11 @@ export function StateCheckClient() {
           </div>
         )}
         <div className="mt-4">
-          <AvatarGrowthCard
+          <AvatarStatusCard
             avatarType={avatarType ?? undefined}
             level={level}
             points={points}
             nextLevelAt={nextLevelAt}
-            compact
           />
         </div>
         <div className="mt-3 text-xs text-gray-600">
