@@ -81,6 +81,7 @@ GitHub の [Commits](https://github.com/spotlight2016red-cmyk/matome-app/commits
 | 2026-05 | ホーム「ショートカット」のトップを「トップに戻る」太字＋組織図を細字に | `0f207c5` |
 | 2026-05 | アバター診断の結果画面強化（集計挟み・攻略ポイント・NextMove ヒント・小ゴール連携） | `be042f3` |
 | 2026-05 | 新規登録成功時は確認メール案内のみ表示（即ログインしない・再送・ログインへ戻る） | `214cd0e` |
+| 2026-05 | メール未確認・未ログインを /home・/state-check・/avatar-diagnosis で遮断（proxy + API） | `ff28df8` |
 
 ---
 
