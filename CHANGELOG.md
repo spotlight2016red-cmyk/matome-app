@@ -75,6 +75,7 @@ GitHub の [Commits](https://github.com/spotlight2016red-cmyk/matome-app/commits
 | 2026-05 | 確認メール再送を API 化（未確認のみ resend）・本番ではデバッグ行非表示 | `ee1a9bc` |
 | 2026-05 | アバター診断を5問・ステップ式・即時結果とホーム保存導線に整理 | `0ae1f00` |
 | 2026-05 | アバター診断の選択肢「落ち着く、安心する」に読点区切り | `1df4506` |
+| 2026-05 | avatar_type 保存を RPC 化（再診断時の user_profiles 権限エラー対策） | `322fcdd` |
 
 ---
 
