@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { supabaseBrowser } from "@/app/lib/supabase/browser";
+import { getConfirmedAuthStatus } from "@/app/lib/confirmedSession";
 import { levelFromPoints, totalPoints } from "@/app/state-check/_lib/points";
 import type { DiagnosisRunSummary } from "@/app/state-check/_components/HistoryList";
 import { AvatarGrowthCard } from "@/app/components/AvatarGrowthCard";
@@ -27,10 +27,13 @@ export function HomeClient() {
     let mounted = true;
     (async () => {
       try {
-        const sb = supabaseBrowser();
-        const { data } = await sb.auth.getSession();
+        const auth = await getConfirmedAuthStatus();
         if (!mounted) return;
-        const ok = Boolean(data.session);
+        if (auth === "unconfirmed") {
+          window.location.assign("/login?notice=email_unconfirmed");
+          return;
+        }
+        const ok = auth === "confirmed";
         setAuthed(ok);
         if (!ok) {
           setHistory([]);

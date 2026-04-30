@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { supabaseBrowser } from "@/app/lib/supabase/browser";
+import { getConfirmedAuthStatus } from "@/app/lib/confirmedSession";
 import {
   AVATAR_DIAGNOSIS_QUESTIONS,
   AVATAR_TYPE_RESULT_COPY,
@@ -50,10 +50,13 @@ export function AvatarDiagnosisClient() {
     let mounted = true;
     (async () => {
       try {
-        const sb = supabaseBrowser();
-        const { data } = await sb.auth.getSession();
+        const auth = await getConfirmedAuthStatus();
         if (!mounted) return;
-        const ok = Boolean(data.session);
+        if (auth === "unconfirmed") {
+          window.location.assign("/login?notice=email_unconfirmed");
+          return;
+        }
+        const ok = auth === "confirmed";
         setAuthed(ok);
         if (!ok) {
           setLoading(false);

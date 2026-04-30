@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { supabaseBrowser } from "@/app/lib/supabase/browser";
+import { safeAppNextPath } from "@/app/lib/confirmedSession";
 
 /**
  * 本番相当では再送デバッグ行を出さない。
@@ -62,12 +63,18 @@ export function LoginClient() {
   const [resendDetail, setResendDetail] = React.useState<string | null>(null);
   /** 新規登録直後：確認メール案内のみ表示（ログインへは進めない） */
   const [signupEmailPending, setSignupEmailPending] = React.useState<string | null>(null);
+  /** signUp 処理中に一瞬付くセッションで本体へ進まないよう抑止 */
+  const signUpInProgressRef = React.useRef(false);
 
   React.useEffect(() => {
     const sb = supabaseBrowser();
     const {
       data: { subscription },
-    } = sb.auth.onAuthStateChange((event) => {
+    } = sb.auth.onAuthStateChange((event, session) => {
+      if (signUpInProgressRef.current && event === "SIGNED_IN" && session) {
+        void sb.auth.signOut();
+        return;
+      }
       if (event === "PASSWORD_RECOVERY") {
         setRecoveryOpen(true);
         setMessage(
@@ -78,29 +85,74 @@ export function LoginClient() {
     return () => subscription.unsubscribe();
   }, []);
 
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("notice") !== "email_unconfirmed") return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const sb = supabaseBrowser();
+        await sb.auth.signOut();
+      } catch {
+        // ignore
+      }
+      if (cancelled) return;
+      setMessage(
+        "メールアドレスの確認が完了していません。届いた確認メールのリンクを開いてから、こちらでログインしてください。",
+      );
+      const u = new URL(window.location.href);
+      u.searchParams.delete("notice");
+      window.history.replaceState({}, "", u.pathname + (u.search ? u.search : ""));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const submit = async () => {
     setLoading(true);
     setMessage(null);
     try {
       const sb = supabaseBrowser();
       if (mode === "signup") {
-        const { data: signUpData, error } = await sb.auth.signUp({ email, password });
-        if (error) throw error;
-        if (signUpData.session) {
-          await sb.auth.signOut();
+        signUpInProgressRef.current = true;
+        try {
+          const origin = window.location.origin;
+          const { data: signUpData, error } = await sb.auth.signUp({
+            email,
+            password,
+            options: { emailRedirectTo: `${origin}/login` },
+          });
+          if (error) throw error;
+          if (signUpData.session) {
+            await sb.auth.signOut();
+          }
+          const sentTo = email.trim();
+          setResendEmail(sentTo);
+          setSignupEmailPending(sentTo);
+          setPassword("");
+          setMessage(null);
+          setResendDetail(null);
+          setResendOpen(false);
+        } finally {
+          signUpInProgressRef.current = false;
         }
-        const sentTo = email.trim();
-        setResendEmail(sentTo);
-        setSignupEmailPending(sentTo);
-        setPassword("");
-        setMessage(null);
-        setResendDetail(null);
-        setResendOpen(false);
       } else {
         const { error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        const { data: userData, error: userErr } = await sb.auth.getUser();
+        if (userErr || !userData.user?.email_confirmed_at) {
+          await sb.auth.signOut();
+          setMessage(
+            "メールアドレスの確認が完了していません。確認メールのリンクを開いてからログインしてください。",
+          );
+          return;
+        }
         setMessage("ログインしました。");
-        window.location.href = "/home";
+        const rawNext = new URLSearchParams(window.location.search).get("next");
+        const target = safeAppNextPath(rawNext) ?? "/home";
+        window.location.href = target;
       }
     } catch (e) {
       setMessage(toJapaneseAuthError(e));
@@ -248,17 +300,25 @@ export function LoginClient() {
             href="/"
             className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
           >
-            ← ホームへ
+            ← 組織図トップへ
           </Link>
-          <Link
-            href="/state-check"
-            className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900 shadow-sm hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-300"
-          >
-            自分の状態診断へ
-          </Link>
-          <div className="text-xs text-gray-500">
-            いまの状態を整理して、次の一手を出す
-          </div>
+          {signupEmailPending ? (
+            <div className="text-xs text-gray-500 max-w-sm leading-relaxed">
+              メール認証が完了すると、状態診断・マイページに進めます。
+            </div>
+          ) : (
+            <>
+              <Link
+                href="/state-check"
+                className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900 shadow-sm hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+              >
+                自分の状態診断へ
+              </Link>
+              <div className="text-xs text-gray-500">
+                いまの状態を整理して、次の一手を出す（ログイン後）
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -288,10 +348,11 @@ export function LoginClient() {
               </p>
               <ul className="text-sm text-gray-800 space-y-2 list-disc pl-5 leading-relaxed mb-4">
                 <li>
-                  メール内の<strong className="font-semibold">確認用リンク</strong>
-                  を開き、表示された画面で確認を完了してください。
+                  <strong className="font-semibold text-gray-900">メール内の確認用リンクをクリック（タップ）して</strong>
+                  認証を完了してください。リンクを開かない限り、登録は完了しません。
                 </li>
-                <li>確認が終わるまで、このアプリにはログインできません（セキュリティのため）。</li>
+                <li>認証が終わるまで、ホーム・状態診断・アバター診断などの画面には入れません。</li>
+                <li>認証後にこの画面からログインすると、マイページや診断に進めます。</li>
               </ul>
               <p className="text-sm text-gray-700 leading-relaxed border-t border-emerald-200/80 pt-4">
                 届かないときは、

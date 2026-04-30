@@ -14,7 +14,7 @@ import { InsightEditor } from "./InsightEditor";
 import { HistoryList, type DiagnosisRunSummary } from "./HistoryList";
 import { TrendsPanel } from "./TrendsPanel";
 import { levelFromPoints, totalPoints } from "../_lib/points";
-import { supabaseBrowser } from "@/app/lib/supabase/browser";
+import { getConfirmedAuthStatus } from "@/app/lib/confirmedSession";
 import { AvatarGrowthCard } from "@/app/components/AvatarGrowthCard";
 import { avatarDiagnosisRedoHref } from "@/app/lib/avatarDiagnosis";
 import { normalizeAvatarType, type AvatarType } from "@/app/lib/avatarImage";
@@ -195,10 +195,13 @@ export function StateCheckClient() {
     let mounted = true;
     (async () => {
       try {
-        const sb = supabaseBrowser();
-        const { data } = await sb.auth.getSession();
+        const auth = await getConfirmedAuthStatus();
         if (!mounted) return;
-        const ok = Boolean(data.session);
+        if (auth === "unconfirmed") {
+          window.location.assign("/login?notice=email_unconfirmed");
+          return;
+        }
+        const ok = auth === "confirmed";
         setAuthed(ok);
         if (ok) {
           void refreshHistory();
