@@ -55,7 +55,7 @@ const QUESTIONS: readonly Question[] = [
     id: "q4",
     title: "友達に言われがちなことは？",
     options: [
-      { id: "a", label: "落ち着くと安心する", scores: { healer: 2 } },
+      { id: "a", label: "落ち着く、安心する", scores: { healer: 2 } },
       { id: "b", label: "頼れる・守ってくれる", scores: { guardian: 2 } },
       { id: "c", label: "面白いことを思いつく", scores: { explorer: 2 } },
       { id: "d", label: "整理がうまい/仕組み化できる", scores: { transformer: 2 } },
