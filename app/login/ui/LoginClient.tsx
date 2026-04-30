@@ -15,7 +15,7 @@ function toJapaneseAuthError(e: unknown) {
   if (!raw) return "失敗しました。時間をおいて再度お試しください。";
   if (msg.includes("missing env")) return raw;
   if (msg.includes("invalid login credentials"))
-    return "メールアドレスまたはパスワードが違います。";
+    return "メール認証済みの場合は、パスワードが違う可能性があります。パスワード再設定を試してください。";
   if (msg.includes("email not confirmed") || msg.includes("email_not_confirmed"))
     return "メールアドレスの確認が完了していません。確認メールのリンクを開いてからログインしてください。";
   if (msg.includes("user already registered"))
@@ -41,6 +41,26 @@ export function LoginClient() {
   const [resendOpen, setResendOpen] = React.useState(false);
   const [resendLoading, setResendLoading] = React.useState(false);
   const [resendEmail, setResendEmail] = React.useState("");
+  const [resetLoading, setResetLoading] = React.useState(false);
+  const [recoveryOpen, setRecoveryOpen] = React.useState(false);
+  const [newRecoveryPassword, setNewRecoveryPassword] = React.useState("");
+  const [confirmRecoveryPassword, setConfirmRecoveryPassword] = React.useState("");
+  const [recoverySubmitLoading, setRecoverySubmitLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    const sb = supabaseBrowser();
+    const {
+      data: { subscription },
+    } = sb.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setRecoveryOpen(true);
+        setMessage(
+          "パスワード再設定用のリンクから入りました。新しいパスワードを入力して更新してください。",
+        );
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const submit = async () => {
     setLoading(true);
@@ -89,6 +109,59 @@ export function LoginClient() {
       setMessage(toJapaneseAuthError(e));
     } finally {
       setResendLoading(false);
+    }
+  };
+
+  const sendPasswordResetEmail = async () => {
+    const targetEmail = email.trim();
+    if (!targetEmail) {
+      setMessage("パスワード再設定メールを送るには、上のメールアドレスを入力してください。");
+      return;
+    }
+
+    setResetLoading(true);
+    setMessage(null);
+    try {
+      const sb = supabaseBrowser();
+      const origin = window.location.origin;
+      const { error } = await sb.auth.resetPasswordForEmail(targetEmail, {
+        redirectTo: `${origin}/login`,
+      });
+      if (error) throw error;
+      setMessage(
+        "パスワード再設定用のメールを送信しました。メール内のリンクを開き、表示された画面で新しいパスワードを設定してください。",
+      );
+    } catch (e) {
+      setMessage(toJapaneseAuthError(e));
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const submitNewPasswordAfterRecovery = async () => {
+    if (newRecoveryPassword.length < 8) {
+      setMessage("パスワードは8文字以上にしてください。");
+      return;
+    }
+    if (newRecoveryPassword !== confirmRecoveryPassword) {
+      setMessage("確認用パスワードが一致しません。");
+      return;
+    }
+
+    setRecoverySubmitLoading(true);
+    setMessage(null);
+    try {
+      const sb = supabaseBrowser();
+      const { error } = await sb.auth.updateUser({ password: newRecoveryPassword });
+      if (error) throw error;
+      setNewRecoveryPassword("");
+      setConfirmRecoveryPassword("");
+      setRecoveryOpen(false);
+      setMessage("パスワードを更新しました。新しいパスワードでログインしてください。");
+    } catch (e) {
+      setMessage(toJapaneseAuthError(e));
+    } finally {
+      setRecoverySubmitLoading(false);
     }
   };
 
@@ -186,17 +259,96 @@ export function LoginClient() {
             {loading ? "処理中…" : mode === "signup" ? "登録する" : "ログインする"}
           </button>
 
+          {mode === "signin" && recoveryOpen && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4">
+              <div className="text-sm font-semibold text-amber-950 mb-2">
+                新しいパスワードを設定する
+              </div>
+              <div className="grid grid-cols-1 gap-3">
+                <div>
+                  <label
+                    htmlFor="recovery-password"
+                    className="block text-xs font-semibold text-amber-900/80 mb-1"
+                  >
+                    新しいパスワード
+                  </label>
+                  <input
+                    id="recovery-password"
+                    type="password"
+                    value={newRecoveryPassword}
+                    onChange={(e) => setNewRecoveryPassword(e.target.value)}
+                    className="w-full rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-amber-300"
+                    placeholder="8文字以上"
+                    autoComplete="new-password"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="recovery-password-confirm"
+                    className="block text-xs font-semibold text-amber-900/80 mb-1"
+                  >
+                    新しいパスワード（確認）
+                  </label>
+                  <input
+                    id="recovery-password-confirm"
+                    type="password"
+                    value={confirmRecoveryPassword}
+                    onChange={(e) => setConfirmRecoveryPassword(e.target.value)}
+                    className="w-full rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-amber-300"
+                    placeholder="もう一度入力"
+                    autoComplete="new-password"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={submitNewPasswordAfterRecovery}
+                  disabled={
+                    recoverySubmitLoading ||
+                    !newRecoveryPassword ||
+                    !confirmRecoveryPassword
+                  }
+                  className={[
+                    "w-full rounded-2xl px-4 py-3 text-sm sm:text-base font-semibold",
+                    "focus:outline-none focus:ring-2 focus:ring-amber-300",
+                    recoverySubmitLoading || !newRecoveryPassword || !confirmRecoveryPassword
+                      ? "bg-amber-100 text-amber-400 cursor-not-allowed"
+                      : "bg-amber-900 text-white hover:bg-amber-800",
+                  ].join(" ")}
+                >
+                  {recoverySubmitLoading ? "更新中…" : "パスワードを更新する"}
+                </button>
+              </div>
+            </div>
+          )}
+
           {mode === "signin" && (
-            <div className="text-sm text-gray-700">
+            <div className="grid grid-cols-1 gap-2 text-sm text-gray-700">
+              <button
+                type="button"
+                onClick={sendPasswordResetEmail}
+                disabled={resetLoading || !email.trim()}
+                className={[
+                  "w-full rounded-2xl border px-4 py-3 text-left text-sm font-semibold",
+                  "focus:outline-none focus:ring-2 focus:ring-gray-300",
+                  resetLoading || !email.trim()
+                    ? "border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed"
+                    : "border-gray-200 bg-white text-gray-900 hover:bg-gray-50",
+                ].join(" ")}
+              >
+                {resetLoading ? "送信中…" : "パスワードを忘れた・再設定メールを送る"}
+              </button>
+              <p className="text-xs text-gray-500 leading-relaxed px-1">
+                上にメールアドレスを入力してから押してください。届いたメールのリンクから新しいパスワードを設定できます。
+              </p>
               <button
                 type="button"
                 onClick={() => {
                   setResendEmail((resendEmail || email).trim());
                   setResendOpen((v) => !v);
                 }}
-                className="font-semibold underline underline-offset-2"
+                className="font-semibold underline underline-offset-2 text-left"
               >
-                確認メールが届かない場合はこちら
+                メール認証がまだのとき（確認メールの再送）
               </button>
             </div>
           )}
@@ -204,8 +356,15 @@ export function LoginClient() {
           {resendOpen && (
             <div className="rounded-xl border border-gray-200 bg-white px-4 py-4">
               <div className="text-sm font-semibold text-gray-900 mb-2">
-                確認メールを再送する
+                確認メールを再送する（未認証の方のみ）
               </div>
+              <p className="text-xs text-gray-600 leading-relaxed mb-3">
+                こちらは、
+                <span className="font-semibold text-gray-800">
+                  メールアドレスの確認がまだ完了していない（未認証の）アカウント
+                </span>
+                向けです。すでにメール確認済みのアカウントでは確認メールは再送されません。ログインできないときは上の「パスワード再設定メール」を試してください。
+              </p>
               <div className="grid grid-cols-1 gap-3">
                 <input
                   type="email"
