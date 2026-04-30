@@ -77,6 +77,7 @@ GitHub の [Commits](https://github.com/spotlight2016red-cmyk/matome-app/commits
 | 2026-05 | アバター診断の選択肢「落ち着く、安心する」に読点区切り | `1df4506` |
 | 2026-05 | avatar_type 保存を RPC 化（再診断時の user_profiles 権限エラー対策） | `322fcdd` |
 | 2026-05 | set_my_avatar_type を upsert に修正（avatar_type NOT NULL 時の保存エラー対策） | `ed2f459` |
+| 2026-05 | 初回アバター診断5問・タイプ名（導き手等）・診断ロジック共通化・avatar_type null 化の再確認 | `270d171` |
 
 ---
 
