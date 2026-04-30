@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabaseBrowser } from "@/app/lib/supabase/browser";
 import {
   AVATAR_DIAGNOSIS_QUESTIONS,
-  AVATAR_TYPE_META,
+  AVATAR_TYPE_RESULT_COPY,
   computeAvatarDiagnosisResult,
 } from "@/app/lib/avatarDiagnosis";
 import {
@@ -15,6 +15,8 @@ import {
   normalizeAvatarType,
   type AvatarType,
 } from "@/app/lib/avatarImage";
+
+const RESULT_REVEAL_MS = 480;
 
 export function AvatarDiagnosisClient() {
   const router = useRouter();
@@ -27,9 +29,22 @@ export function AvatarDiagnosisClient() {
   const [serverAvatarType, setServerAvatarType] = React.useState<AvatarType | null>(null);
   const [answers, setAnswers] = React.useState<Record<string, string>>({});
   const [step, setStep] = React.useState(0);
+  const [aggregating, setAggregating] = React.useState(false);
   const [result, setResult] = React.useState<AvatarType | null>(null);
+  const [smallGoalHint, setSmallGoalHint] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  const revealTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (revealTimerRef.current) {
+        clearTimeout(revealTimerRef.current);
+        revealTimerRef.current = null;
+      }
+    };
+  }, []);
 
   React.useEffect(() => {
     let mounted = true;
@@ -76,6 +91,26 @@ export function AvatarDiagnosisClient() {
     };
   }, [next, redo, router]);
 
+  React.useEffect(() => {
+    if (!result || aggregating) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/goals", { method: "GET" });
+        const json = (await res.json()) as { ok?: boolean; goals?: { small_goal?: string }[] };
+        if (cancelled || !json?.ok) return;
+        const raw = json.goals?.[0]?.small_goal;
+        const t = typeof raw === "string" ? raw.trim() : "";
+        setSmallGoalHint(t || null);
+      } catch {
+        if (!cancelled) setSmallGoalHint(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [result, aggregating]);
+
   const totalSteps = AVATAR_DIAGNOSIS_QUESTIONS.length;
 
   const selectOption = React.useCallback(
@@ -85,8 +120,15 @@ export function AvatarDiagnosisClient() {
       const merged = { ...answers, [q.id]: optionId };
       setAnswers(merged);
       if (step >= totalSteps - 1) {
-        setResult(computeAvatarDiagnosisResult(merged));
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+        setAggregating(true);
+        setSmallGoalHint(null);
+        revealTimerRef.current = setTimeout(() => {
+          setResult(computeAvatarDiagnosisResult(merged));
+          setAggregating(false);
+          revealTimerRef.current = null;
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }, RESULT_REVEAL_MS);
       } else {
         setStep((s) => s + 1);
       }
@@ -95,6 +137,21 @@ export function AvatarDiagnosisClient() {
   );
 
   const goBack = React.useCallback(() => {
+    if (aggregating) {
+      if (revealTimerRef.current) {
+        clearTimeout(revealTimerRef.current);
+        revealTimerRef.current = null;
+      }
+      setAggregating(false);
+      const currentQId = AVATAR_DIAGNOSIS_QUESTIONS[step].id;
+      setAnswers((prev) => {
+        const nextAns = { ...prev };
+        delete nextAns[currentQId];
+        return nextAns;
+      });
+      setError(null);
+      return;
+    }
     if (result || step <= 0) return;
     const currentQId = AVATAR_DIAGNOSIS_QUESTIONS[step].id;
     setAnswers((prev) => {
@@ -104,12 +161,18 @@ export function AvatarDiagnosisClient() {
     });
     setStep((s) => s - 1);
     setError(null);
-  }, [result, step]);
+  }, [aggregating, result, step]);
 
   const reset = React.useCallback(() => {
+    if (revealTimerRef.current) {
+      clearTimeout(revealTimerRef.current);
+      revealTimerRef.current = null;
+    }
     setAnswers({});
     setStep(0);
+    setAggregating(false);
     setResult(null);
+    setSmallGoalHint(null);
     setError(null);
   }, []);
 
@@ -163,6 +226,8 @@ export function AvatarDiagnosisClient() {
     );
   }
 
+  const copy = result ? AVATAR_TYPE_RESULT_COPY[result] : null;
+
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-10">
       <section className="mb-6">
@@ -171,11 +236,11 @@ export function AvatarDiagnosisClient() {
             {redo ? "アバター再診断" : "初回アバター診断"}
           </h1>
           {serverAvatarType && (
-            <span className="ui-pill">現在: {AVATAR_TYPE_META[serverAvatarType].label}</span>
+            <span className="ui-pill">現在: {AVATAR_TYPE_RESULT_COPY[serverAvatarType].label}</span>
           )}
         </div>
         <p className="mt-3 text-sm sm:text-base text-gray-700 leading-relaxed">
-          5問をタップで選択。あなたに近い「自分のキャラ」タイプがすぐ分かります。
+          5問をタップで選択。結果画面でタイプと攻略のヒントを確認してから進みます。
         </p>
       </section>
 
@@ -185,10 +250,26 @@ export function AvatarDiagnosisClient() {
         </div>
       )}
 
-      {result ? (
-        <section className="rounded-3xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur px-6 py-6">
-          <div className="flex flex-col sm:flex-row items-start gap-5">
-            <div className="shrink-0 mx-auto sm:mx-0 rounded-3xl bg-white border border-gray-200 overflow-hidden shadow-lg ring-2 ring-gray-100 size-32 sm:size-36">
+      {aggregating ? (
+        <section
+          className="rounded-3xl border border-violet-200 bg-gradient-to-b from-violet-50/90 to-white px-8 py-14 text-center shadow-sm"
+          aria-live="polite"
+        >
+          <div className="mx-auto mb-4 size-10 rounded-full border-2 border-violet-300 border-t-violet-700 animate-spin" />
+          <p className="text-sm font-semibold text-violet-950">結果を集計しています…</p>
+          <p className="mt-2 text-xs text-violet-800/80">このあと結果画面が表示されます（まだ保存・遷移はしません）</p>
+        </section>
+      ) : result && copy ? (
+        <section className="rounded-3xl border-2 border-gray-900/10 bg-white/95 shadow-md backdrop-blur px-5 py-7 sm:px-8 sm:py-8">
+          <header className="mb-6 border-b border-gray-200 pb-5 text-center sm:text-left">
+            <p className="text-xs font-semibold tracking-widest text-violet-700">診断の結果</p>
+            <h2 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
+              あなたは {copy.label} タイプ
+            </h2>
+          </header>
+
+          <div className="flex flex-col sm:flex-row items-start gap-6 sm:gap-8">
+            <div className="shrink-0 mx-auto sm:mx-0 rounded-3xl bg-white border border-gray-200 overflow-hidden shadow-lg ring-2 ring-violet-100 size-36 sm:size-40">
               <img
                 src={getAvatarImage(result, 1, { points: 0 })}
                 onError={(e) => {
@@ -196,37 +277,70 @@ export function AvatarDiagnosisClient() {
                 }}
                 alt={`avatar_${result}`}
                 className="size-full object-cover"
-                width={144}
-                height={144}
+                width={160}
+                height={160}
               />
             </div>
-            <div className="min-w-0 flex-1 w-full text-center sm:text-left">
-              <div className="text-xs text-gray-500 mb-2">診断結果</div>
-              <p className="text-xl sm:text-2xl font-semibold text-gray-900 leading-snug">
-                あなたは {AVATAR_TYPE_META[result].label} タイプ
+
+            <div className="min-w-0 flex-1 w-full space-y-5">
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
+                  このタイプの特徴
+                </h3>
+                <div className="space-y-2">
+                  {copy.traitLines.map((line, i) => (
+                    <p key={i} className="text-sm text-gray-800 leading-relaxed">
+                      {line}
+                    </p>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-amber-200/80 bg-amber-50/90 px-4 py-4 sm:px-5 sm:py-5">
+                <h3 className="text-sm font-semibold text-amber-950">攻略ポイント（どう動くと強いか）</h3>
+                <ul className="mt-2 list-disc pl-5 text-sm text-amber-950/90 space-y-1.5 leading-relaxed">
+                  {copy.strategyBullets.map((b, i) => (
+                    <li key={i}>{b}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="rounded-2xl border border-sky-200/80 bg-sky-50/90 px-4 py-4 sm:px-5 sm:py-5">
+                <h3 className="text-sm font-semibold text-sky-950">初回の次の一手（NextMove のヒント）</h3>
+                <p className="mt-2 text-sm text-sky-950/90 leading-relaxed">{copy.suggestedFirstMove}</p>
+                {smallGoalHint ? (
+                  <p className="mt-3 text-xs text-sky-900/85 leading-relaxed border-t border-sky-200/80 pt-3">
+                    登録済みの小ゴールと組み合わせるなら：
+                    <span className="font-semibold text-sky-950"> {smallGoalHint}</span>
+                  </p>
+                ) : (
+                  <p className="mt-3 text-xs text-sky-800/80">
+                    小ゴールは「ゴール整理」から設定すると、状態チェックの NextMove と連動しやすくなります。
+                  </p>
+                )}
+              </div>
+
+              <p className="text-xs text-gray-500 leading-relaxed">
+                「このキャラで進む」でタイプを保存し、その先へ移動します。
               </p>
-              <p className="mt-3 text-sm text-gray-700 leading-relaxed">
-                {AVATAR_TYPE_META[result].desc}
-              </p>
-              <p className="mt-3 text-xs text-gray-500 leading-relaxed">
-                保存すると、このアバターがマイページなどに反映されます。
-              </p>
-              <div className="mt-5 flex flex-col sm:flex-row flex-wrap gap-3">
+
+              <div className="flex flex-col sm:flex-row flex-wrap gap-3 pt-1">
                 <button
                   type="button"
                   onClick={save}
                   disabled={saving}
                   className={[
-                    "inline-flex w-full sm:w-auto min-h-[52px] items-center justify-center rounded-2xl px-5 py-4 text-sm font-semibold shadow-md focus:outline-none focus:ring-2 focus:ring-gray-300",
+                    "inline-flex w-full sm:w-auto min-h-[52px] items-center justify-center rounded-2xl px-6 py-4 text-sm font-semibold shadow-md focus:outline-none focus:ring-2 focus:ring-violet-300",
                     saving ? "bg-gray-200 text-gray-500" : "bg-gray-900 text-white hover:bg-gray-800",
                   ].join(" ")}
                 >
-                  {saving ? "保存中…" : next === "/home" ? "ホームへ進む（保存）" : "結果を保存して進む"}
+                  {saving ? "保存中…" : "このキャラで進む"}
                 </button>
                 <button
                   type="button"
                   onClick={reset}
-                  className="inline-flex w-full sm:w-auto min-h-[52px] items-center justify-center rounded-2xl border border-gray-200 bg-white px-5 py-4 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
+                  disabled={saving}
+                  className="inline-flex w-full sm:w-auto min-h-[52px] items-center justify-center rounded-2xl border border-gray-200 bg-white px-6 py-4 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
                 >
                   もう一度やり直す
                 </button>
@@ -261,10 +375,12 @@ export function AvatarDiagnosisClient() {
             <button
               type="button"
               onClick={goBack}
-              disabled={step <= 0}
+              disabled={step <= 0 && !aggregating}
               className={[
                 "text-sm font-semibold rounded-xl px-3 py-2",
-                step <= 0 ? "text-gray-300 cursor-not-allowed" : "text-gray-700 hover:bg-gray-100",
+                step <= 0 && !aggregating
+                  ? "text-gray-300 cursor-not-allowed"
+                  : "text-gray-700 hover:bg-gray-100",
               ].join(" ")}
             >
               ← ひとつ前へ
@@ -300,11 +416,18 @@ export function AvatarDiagnosisClient() {
         </>
       )}
 
-      <div className="mt-6 text-xs text-gray-500">
-        <Link href={next} className="underline underline-offset-2">
-          いったん戻る
-        </Link>
-      </div>
+      {!aggregating && (
+        <div className="mt-6 text-xs text-gray-500">
+          <Link href={next} className="underline underline-offset-2">
+            {result ? "保存せずに戻る" : "いったん戻る"}
+          </Link>
+          {result && (
+            <span className="block mt-1 text-gray-400">
+              戻るとタイプはまだ保存されません（ホームでは未診断のままの場合があります）。
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
