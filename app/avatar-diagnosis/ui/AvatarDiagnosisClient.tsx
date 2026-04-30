@@ -73,25 +73,14 @@ const QUESTIONS: readonly Question[] = [
       { id: "e", label: "ルール/手順に落とす", scores: { transformer: 2 } },
     ],
   },
-  {
-    id: "q6",
-    title: "最高の「次の一手」は？",
-    options: [
-      { id: "a", label: "いま最短の一手を決める", scores: { guide: 2 } },
-      { id: "b", label: "回復して、明日も動ける状態にする", scores: { healer: 2 } },
-      { id: "c", label: "守りを固めて、事故を減らす", scores: { guardian: 2 } },
-      { id: "d", label: "試して学んで、突破口を作る", scores: { explorer: 2 } },
-      { id: "e", label: "仕組みにして、再現できる形にする", scores: { transformer: 2 } },
-    ],
-  },
-] as const;
+];
 
 const TYPE_META: Record<AvatarType, { label: string; desc: string }> = {
-  guide: { label: "Guide", desc: "迷いを減らして、次の一手を決めるタイプ" },
-  healer: { label: "Healer", desc: "回復とペースを整えて、継続力を作るタイプ" },
-  guardian: { label: "Guardian", desc: "安心の土台を作って、事故を減らすタイプ" },
-  explorer: { label: "Explorer", desc: "試して学んで、突破口を見つけるタイプ" },
-  transformer: { label: "Transformer", desc: "分解と再構築で、再現できる形にするタイプ" },
+  guide: { label: "ガイド（Guide）", desc: "迷いを減らし、次の一手を決めて道を示すタイプ" },
+  healer: { label: "ヒーラー（Healer）", desc: "回復とペースを整え、続けられる状態をつくるタイプ" },
+  guardian: { label: "ガーディアン（Guardian）", desc: "安心の土台を作り、リスクを減らして守るタイプ" },
+  explorer: { label: "エクスプローラー（Explorer）", desc: "試して学び、突破口や新しい可能性を見つけるタイプ" },
+  transformer: { label: "トランスフォーマー（Transformer）", desc: "分解と再構築で、再現できる形に組み替えるタイプ" },
 };
 
 function computeResult(answers: Record<string, string>): AvatarType {
@@ -133,6 +122,7 @@ export function AvatarDiagnosisClient() {
   const [loading, setLoading] = React.useState(true);
   const [serverAvatarType, setServerAvatarType] = React.useState<AvatarType | null>(null);
   const [answers, setAnswers] = React.useState<Record<string, string>>({});
+  const [step, setStep] = React.useState(0);
   const [result, setResult] = React.useState<AvatarType | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -182,19 +172,39 @@ export function AvatarDiagnosisClient() {
     };
   }, [next, redo, router]);
 
-  const allAnswered = React.useMemo(() => {
-    return QUESTIONS.every((q) => Boolean(answers[q.id]));
-  }, [answers]);
+  const totalSteps = QUESTIONS.length;
 
-  const showResult = React.useCallback(() => {
+  const selectOption = React.useCallback(
+    (optionId: string) => {
+      setError(null);
+      const q = QUESTIONS[step];
+      const merged = { ...answers, [q.id]: optionId };
+      setAnswers(merged);
+      if (step >= totalSteps - 1) {
+        setResult(computeResult(merged));
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        setStep((s) => s + 1);
+      }
+    },
+    [answers, step, totalSteps],
+  );
+
+  const goBack = React.useCallback(() => {
+    if (result || step <= 0) return;
+    const currentQId = QUESTIONS[step].id;
+    setAnswers((prev) => {
+      const next = { ...prev };
+      delete next[currentQId];
+      return next;
+    });
+    setStep((s) => s - 1);
     setError(null);
-    if (!allAnswered) return;
-    setResult(computeResult(answers));
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [allAnswered, answers]);
+  }, [result, step]);
 
   const reset = React.useCallback(() => {
     setAnswers({});
+    setStep(0);
     setResult(null);
     setError(null);
   }, []);
@@ -261,7 +271,7 @@ export function AvatarDiagnosisClient() {
           )}
         </div>
         <p className="mt-3 text-sm sm:text-base text-gray-700 leading-relaxed">
-          6問だけ答えると、あなたの攻略スタイル（アバタータイプ）を決めます。
+          5問の選択だけ。直感で選ぶと、あなたに近いアバタータイプ（攻略スタイル）がすぐ分かります。
         </p>
       </section>
 
@@ -273,8 +283,8 @@ export function AvatarDiagnosisClient() {
 
       {result ? (
         <section className="rounded-3xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur px-6 py-6">
-          <div className="flex items-start gap-5">
-            <div className="shrink-0 rounded-3xl bg-white border border-gray-200 overflow-hidden shadow-lg ring-2 ring-gray-100 size-28">
+          <div className="flex flex-col sm:flex-row items-start gap-5">
+            <div className="shrink-0 mx-auto sm:mx-0 rounded-3xl bg-white border border-gray-200 overflow-hidden shadow-lg ring-2 ring-gray-100 size-32 sm:size-36">
               <img
                 src={getAvatarImage(result, 1, { points: 0 })}
                 onError={(e) => {
@@ -282,34 +292,37 @@ export function AvatarDiagnosisClient() {
                 }}
                 alt={`avatar_${result}`}
                 className="size-full object-cover"
-                width={112}
-                height={112}
+                width={144}
+                height={144}
               />
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-xs text-gray-500 mb-1">診断結果</div>
-              <div className="text-xl font-semibold text-gray-900">
+            <div className="min-w-0 flex-1 w-full text-center sm:text-left">
+              <div className="text-xs text-gray-500 mb-1">あなたのタイプ</div>
+              <div className="text-xl sm:text-2xl font-semibold text-gray-900">
                 {TYPE_META[result].label}
               </div>
               <p className="mt-2 text-sm text-gray-700 leading-relaxed">
                 {TYPE_META[result].desc}
               </p>
-              <div className="mt-5 flex flex-wrap gap-3">
+              <p className="mt-3 text-xs text-gray-500 leading-relaxed">
+                下のボタンで結果を保存すると、このアバターがマイページなどに反映されます。
+              </p>
+              <div className="mt-5 flex flex-col sm:flex-row flex-wrap gap-3">
                 <button
                   type="button"
                   onClick={save}
                   disabled={saving}
                   className={[
-                    "inline-flex w-full sm:w-auto items-center justify-center rounded-2xl px-5 py-4 text-sm font-semibold shadow-md focus:outline-none focus:ring-2 focus:ring-gray-300",
+                    "inline-flex w-full sm:w-auto min-h-[52px] items-center justify-center rounded-2xl px-5 py-4 text-sm font-semibold shadow-md focus:outline-none focus:ring-2 focus:ring-gray-300",
                     saving ? "bg-gray-200 text-gray-500" : "bg-gray-900 text-white hover:bg-gray-800",
                   ].join(" ")}
                 >
-                  {saving ? "保存中…" : "このタイプで確定"}
+                  {saving ? "保存中…" : next === "/home" ? "ホームへ進む（保存）" : "結果を保存して進む"}
                 </button>
                 <button
                   type="button"
                   onClick={reset}
-                  className="inline-flex w-full sm:w-auto items-center justify-center rounded-2xl border border-gray-200 bg-white px-5 py-4 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
+                  className="inline-flex w-full sm:w-auto min-h-[52px] items-center justify-center rounded-2xl border border-gray-200 bg-white px-5 py-4 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
                 >
                   もう一度やり直す
                 </button>
@@ -319,61 +332,67 @@ export function AvatarDiagnosisClient() {
         </section>
       ) : (
         <>
-          <div className="space-y-4">
-            {QUESTIONS.map((q) => (
-              <section
-                key={q.id}
-                className="rounded-3xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur px-6 py-6"
-              >
-                <div className="text-sm font-semibold text-gray-900 mb-3">{q.title}</div>
-                <div className="grid grid-cols-1 gap-2">
-                  {q.options.map((o) => {
-                    const selected = answers[q.id] === o.id;
-                    return (
-                      <button
-                        key={o.id}
-                        type="button"
-                        onClick={() => setAnswers((prev) => ({ ...prev, [q.id]: o.id }))}
-                        className={[
-                          "rounded-2xl border px-4 py-3 text-left",
-                          selected
-                            ? "border-gray-900 bg-gray-900 text-white"
-                            : "border-gray-200 bg-white text-gray-900 hover:bg-gray-50",
-                        ].join(" ")}
-                        aria-pressed={selected}
-                      >
-                        <div className={selected ? "text-sm font-semibold" : "text-sm font-semibold"}>
-                          {o.label}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
+          <div
+            className="mb-6 flex gap-1.5"
+            role="progressbar"
+            aria-valuenow={step + 1}
+            aria-valuemin={1}
+            aria-valuemax={totalSteps}
+            aria-label={`質問 ${step + 1} / ${totalSteps}`}
+          >
+            {QUESTIONS.map((_, i) => (
+              <div
+                key={QUESTIONS[i].id}
+                className={[
+                  "h-2 flex-1 rounded-full transition-colors",
+                  i <= step ? "bg-gray-900" : "bg-gray-200",
+                ].join(" ")}
+              />
             ))}
           </div>
-
-          <div className="mt-6">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+              質問 {step + 1} / {totalSteps}
+            </span>
             <button
               type="button"
-              onClick={showResult}
-              disabled={!allAnswered}
+              onClick={goBack}
+              disabled={step <= 0}
               className={[
-                "w-full rounded-2xl px-4 py-4 text-sm sm:text-base font-semibold",
-                "focus:outline-none focus:ring-2 focus:ring-gray-300",
-                allAnswered
-                  ? "bg-gray-900 text-white hover:bg-gray-800"
-                  : "bg-gray-100 text-gray-400 cursor-not-allowed",
+                "text-sm font-semibold rounded-xl px-3 py-2",
+                step <= 0 ? "text-gray-300 cursor-not-allowed" : "text-gray-700 hover:bg-gray-100",
               ].join(" ")}
             >
-              結果を見る
+              ← ひとつ前へ
             </button>
-            {!allAnswered && (
-              <p className="mt-2 text-xs text-gray-500">
-                6問すべて回答すると結果が表示できます。
-              </p>
-            )}
           </div>
+
+          <section className="rounded-3xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur px-5 py-6 sm:px-7 sm:py-7">
+            <div className="text-base sm:text-lg font-semibold text-gray-900 mb-5 leading-snug">
+              {QUESTIONS[step].title}
+            </div>
+            <div className="grid grid-cols-1 gap-3">
+              {QUESTIONS[step].options.map((o) => {
+                const selected = answers[QUESTIONS[step].id] === o.id;
+                return (
+                  <button
+                    key={o.id}
+                    type="button"
+                    onClick={() => selectOption(o.id)}
+                    className={[
+                      "rounded-2xl border px-4 py-4 sm:py-5 text-left transition-colors",
+                      selected
+                        ? "border-gray-900 bg-gray-900 text-white ring-2 ring-gray-900/20"
+                        : "border-gray-200 bg-white text-gray-900 hover:border-gray-400 hover:bg-gray-50 active:scale-[0.99]",
+                    ].join(" ")}
+                    aria-pressed={selected}
+                  >
+                    <span className="text-sm sm:text-base font-semibold leading-snug">{o.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
         </>
       )}
 
