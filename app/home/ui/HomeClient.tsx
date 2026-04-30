@@ -8,6 +8,7 @@ import { levelFromPoints, totalPoints } from "@/app/state-check/_lib/points";
 import type { DiagnosisRunSummary } from "@/app/state-check/_components/HistoryList";
 import { AvatarGrowthCard } from "@/app/components/AvatarGrowthCard";
 import { todayDayKeyJST } from "@/app/state-check/_lib/dayKey";
+import { avatarDiagnosisRedoHref } from "@/app/lib/avatarDiagnosis";
 import { normalizeAvatarType, type AvatarType } from "@/app/lib/avatarImage";
 
 export function HomeClient() {
@@ -178,7 +179,7 @@ export function HomeClient() {
                 ゴールを確認
               </Link>
               <Link
-                href="/avatar-diagnosis?redo=1&next=/home"
+                href={avatarDiagnosisRedoHref("/home")}
                 className="inline-flex w-full sm:w-auto items-center justify-center rounded-2xl border border-gray-200 bg-white px-5 py-4 text-sm sm:text-base font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
               >
                 アバター再診断

@@ -28,6 +28,7 @@ export function AvatarGrowthCard({
   const stage = React.useMemo(() => stageFromLevel(level), [level]);
   const remain = Math.max(0, nextLevelAt - points);
   const fallbackSrc = React.useMemo(() => getAvatarFallbackImage(), []);
+  // avatar_type 未確定（null）のときは画像パスだけ explorer 系にフォールバック（未診断判定は別ルート）
   const candidates = React.useMemo(
     () => getAvatarImageCandidates(avatarType ?? "explorer", level, { points }),
     [avatarType, level, points]

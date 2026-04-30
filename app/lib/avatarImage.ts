@@ -1,5 +1,6 @@
 export type AvatarType = "guide" | "healer" | "guardian" | "explorer" | "transformer";
 
+/** DB や API で想定外の文字列のときのフォールバック（未診断の null はここでは扱わない） */
 export function normalizeAvatarType(input: unknown): AvatarType {
   const v = String(input ?? "").trim().toLowerCase();
   if (v === "guide") return "guide";
@@ -10,8 +11,8 @@ export function normalizeAvatarType(input: unknown): AvatarType {
   return "explorer";
 }
 
+/** 画像の読み込み失敗時・avatar_type 未確定時のプレースホルダ（explorer のみ使用） */
 export function getAvatarFallbackImage(): string {
-  // Keep this stable and always-present.
   return "/avatars/explorer/lv1.jpg";
 }
 

@@ -16,6 +16,7 @@ import { TrendsPanel } from "./TrendsPanel";
 import { levelFromPoints, totalPoints } from "../_lib/points";
 import { supabaseBrowser } from "@/app/lib/supabase/browser";
 import { AvatarGrowthCard } from "@/app/components/AvatarGrowthCard";
+import { avatarDiagnosisRedoHref } from "@/app/lib/avatarDiagnosis";
 import { normalizeAvatarType, type AvatarType } from "@/app/lib/avatarImage";
 
 const POINT_RULES: readonly { label: string; points: number }[] = [
@@ -460,6 +461,12 @@ export function StateCheckClient() {
             className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
           >
             マイページへ
+          </Link>
+          <Link
+            href={avatarDiagnosisRedoHref("/state-check")}
+            className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
+          >
+            アバター再診断
           </Link>
           <Link
             href="/state-check/goals"
