@@ -4,6 +4,17 @@ import * as React from "react";
 import Link from "next/link";
 import { supabaseBrowser } from "@/app/lib/supabase/browser";
 
+/**
+ * 本番相当では再送デバッグ行を出さない。
+ * - Vercel Production: VERCEL_ENV がビルド時に production
+ * - `next build` + `next start` など NODE_ENV=production かつ Preview でない場合
+ */
+const vercelEnvPublic = process.env.NEXT_PUBLIC_VERCEL_ENV ?? "";
+const showResendDebugLine = !(
+  vercelEnvPublic === "production" ||
+  (process.env.NODE_ENV === "production" && vercelEnvPublic !== "preview")
+);
+
 function toJapaneseAuthError(e: unknown) {
   const raw =
     e && typeof e === "object" && "message" in e && typeof (e as any).message === "string"
@@ -20,6 +31,8 @@ function toJapaneseAuthError(e: unknown) {
     return "メールアドレスの確認が完了していません。確認メールのリンクを開いてからログインしてください。";
   if (msg.includes("user already registered"))
     return "このメールアドレスは既に登録されています。ログインしてください。";
+  if (msg.includes("already confirmed") || msg.includes("already been confirmed"))
+    return "確認済みです。ログインしてください。";
   if (msg.includes("password") && msg.includes("characters"))
     return "パスワードが短すぎます。もう少し長いパスワードを設定してください。";
   if (
@@ -46,6 +59,7 @@ export function LoginClient() {
   const [newRecoveryPassword, setNewRecoveryPassword] = React.useState("");
   const [confirmRecoveryPassword, setConfirmRecoveryPassword] = React.useState("");
   const [recoverySubmitLoading, setRecoverySubmitLoading] = React.useState(false);
+  const [resendDetail, setResendDetail] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     const sb = supabaseBrowser();
@@ -93,19 +107,66 @@ export function LoginClient() {
     const targetEmail = (resendEmail || email).trim();
     if (!targetEmail) {
       setMessage("メールアドレスを入力してください。");
+      setResendDetail(null);
       return;
     }
 
     setResendLoading(true);
     setMessage(null);
+    setResendDetail(null);
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    console.info("[resend-signup] 再送 API を呼び出します", { email: targetEmail, origin });
+
     try {
-      const sb = supabaseBrowser();
-      const { error } = await sb.auth.resend({ type: "signup", email: targetEmail });
-      if (error) throw error;
-      setMessage(
-        "確認メールを再送しました。届かない場合は迷惑メールフォルダや受信設定をご確認ください。",
-      );
+      const res = await fetch("/api/auth/resend-signup-confirmation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: targetEmail,
+          ...(origin ? { redirectOrigin: origin } : {}),
+        }),
+      });
+
+      const json = (await res.json()) as {
+        ok?: boolean;
+        code?: string;
+        message?: string;
+        debug?: Record<string, unknown>;
+      };
+
+      console.info("[resend-signup] API 応答", {
+        httpStatus: res.status,
+        ok: json.ok,
+        code: json.code,
+        message: json.message,
+        debug: json.debug,
+      });
+
+      const detail =
+        json.debug != null
+          ? `コード: ${json.code ?? "—"} / HTTP ${res.status} / 詳細: ${JSON.stringify(json.debug)}`
+          : `コード: ${json.code ?? "—"} / HTTP ${res.status}`;
+      setResendDetail(detail);
+
+      if (!res.ok) {
+        setMessage(json.message ?? "再送の確認に失敗しました。時間をおいて再度お試しください。");
+        return;
+      }
+
+      if (json.ok === true && json.message) {
+        setMessage(json.message);
+        return;
+      }
+
+      if (json.message) {
+        setMessage(json.message);
+        return;
+      }
+
+      setMessage("結果を解釈できませんでした。コンソールのログを確認してください。");
     } catch (e) {
+      console.error("[resend-signup] fetch 例外", e);
+      setResendDetail(String(e));
       setMessage(toJapaneseAuthError(e));
     } finally {
       setResendLoading(false);
@@ -124,10 +185,15 @@ export function LoginClient() {
     try {
       const sb = supabaseBrowser();
       const origin = window.location.origin;
-      const { error } = await sb.auth.resetPasswordForEmail(targetEmail, {
+      console.info("[password-reset] resetPasswordForEmail を呼び出します", { email: targetEmail });
+      const { data, error } = await sb.auth.resetPasswordForEmail(targetEmail, {
         redirectTo: `${origin}/login`,
       });
-      if (error) throw error;
+      if (error) {
+        console.error("[password-reset] エラー", { message: error.message, name: error.name });
+        throw error;
+      }
+      console.info("[password-reset] 成功（error は null）", { data });
       setMessage(
         "パスワード再設定用のメールを送信しました。メール内のリンクを開き、表示された画面で新しいパスワードを設定してください。",
       );
@@ -244,6 +310,12 @@ export function LoginClient() {
             </div>
           )}
 
+          {showResendDebugLine && resendDetail && (
+            <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50/80 px-4 py-2 text-xs text-gray-600 font-mono break-all">
+              再送デバッグ（サポート用）: {resendDetail}
+            </div>
+          )}
+
           <button
             type="button"
             onClick={submit}
@@ -350,6 +422,20 @@ export function LoginClient() {
               >
                 メール認証がまだのとき（確認メールの再送）
               </button>
+            </div>
+          )}
+
+          {mode === "signup" && (
+            <div className="rounded-xl border border-gray-200 bg-gray-50/60 px-4 py-3 text-xs text-gray-600 leading-relaxed">
+              すでに登録済みで「ログインできない」「パスワードが分からない」場合は、
+              <button
+                type="button"
+                onClick={() => setMode("signin")}
+                className="font-semibold text-gray-900 underline underline-offset-2 mx-0.5"
+              >
+                ログイン画面
+              </button>
+              の「パスワードを忘れた・再設定メールを送る」から再設定できます。メール未確認の場合も、ログイン画面から確認メールの再送ができます。
             </div>
           )}
 

@@ -72,6 +72,7 @@ GitHub の [Commits](https://github.com/spotlight2016red-cmyk/matome-app/commits
 | 2026-04 | state-checkでAvatarGrowthCardを主役表示に統一 | `df75754` |
 | 2026-04 | 新規登録後の確認メール再送導線を追加 | `92b0973` |
 | 2026-04 | ログイン失敗案内・未認証向け再送の明記・パスワード再設定 | `9eb1a78` |
+| 2026-05 | 確認メール再送を API 化（未確認のみ resend）・本番ではデバッグ行非表示 | `79701bd` |
 
 ---
 
