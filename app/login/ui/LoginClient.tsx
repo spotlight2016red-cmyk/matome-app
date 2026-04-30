@@ -4,12 +4,43 @@ import * as React from "react";
 import Link from "next/link";
 import { supabaseBrowser } from "@/app/lib/supabase/browser";
 
+function toJapaneseAuthError(e: unknown) {
+  const raw =
+    e && typeof e === "object" && "message" in e && typeof (e as any).message === "string"
+      ? ((e as any).message as string)
+      : "";
+
+  const msg = raw.toLowerCase();
+
+  if (!raw) return "失敗しました。時間をおいて再度お試しください。";
+  if (msg.includes("missing env")) return raw;
+  if (msg.includes("invalid login credentials"))
+    return "メールアドレスまたはパスワードが違います。";
+  if (msg.includes("email not confirmed") || msg.includes("email_not_confirmed"))
+    return "メールアドレスの確認が完了していません。確認メールのリンクを開いてからログインしてください。";
+  if (msg.includes("user already registered"))
+    return "このメールアドレスは既に登録されています。ログインしてください。";
+  if (msg.includes("password") && msg.includes("characters"))
+    return "パスワードが短すぎます。もう少し長いパスワードを設定してください。";
+  if (
+    msg.includes("rate limit") ||
+    msg.includes("too many requests") ||
+    msg.includes("over_email_send_rate_limit")
+  )
+    return "短時間にリクエストが多すぎます。しばらく待ってからお試しください。";
+
+  return raw;
+}
+
 export function LoginClient() {
   const [mode, setMode] = React.useState<"signin" | "signup">("signin");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
+  const [resendOpen, setResendOpen] = React.useState(false);
+  const [resendLoading, setResendLoading] = React.useState(false);
+  const [resendEmail, setResendEmail] = React.useState("");
 
   const submit = async () => {
     setLoading(true);
@@ -19,7 +50,11 @@ export function LoginClient() {
       if (mode === "signup") {
         const { error } = await sb.auth.signUp({ email, password });
         if (error) throw error;
-        setMessage("アカウントを作成しました。ログインしてください。");
+        setResendEmail(email);
+        setResendOpen(true);
+        setMessage(
+          "確認メールを送信しました。メール内のリンクから認証した後にログインしてください。届かない場合は下のボタンから再送できます。",
+        );
         setMode("signin");
       } else {
         const { error } = await sb.auth.signInWithPassword({ email, password });
@@ -28,9 +63,32 @@ export function LoginClient() {
         window.location.href = "/home";
       }
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "失敗しました");
+      setMessage(toJapaneseAuthError(e));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const resendConfirmationEmail = async () => {
+    const targetEmail = (resendEmail || email).trim();
+    if (!targetEmail) {
+      setMessage("メールアドレスを入力してください。");
+      return;
+    }
+
+    setResendLoading(true);
+    setMessage(null);
+    try {
+      const sb = supabaseBrowser();
+      const { error } = await sb.auth.resend({ type: "signup", email: targetEmail });
+      if (error) throw error;
+      setMessage(
+        "確認メールを再送しました。届かない場合は迷惑メールフォルダや受信設定をご確認ください。",
+      );
+    } catch (e) {
+      setMessage(toJapaneseAuthError(e));
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -127,6 +185,57 @@ export function LoginClient() {
           >
             {loading ? "処理中…" : mode === "signup" ? "登録する" : "ログインする"}
           </button>
+
+          {mode === "signin" && (
+            <div className="text-sm text-gray-700">
+              <button
+                type="button"
+                onClick={() => {
+                  setResendEmail((resendEmail || email).trim());
+                  setResendOpen((v) => !v);
+                }}
+                className="font-semibold underline underline-offset-2"
+              >
+                確認メールが届かない場合はこちら
+              </button>
+            </div>
+          )}
+
+          {resendOpen && (
+            <div className="rounded-xl border border-gray-200 bg-white px-4 py-4">
+              <div className="text-sm font-semibold text-gray-900 mb-2">
+                確認メールを再送する
+              </div>
+              <div className="grid grid-cols-1 gap-3">
+                <input
+                  type="email"
+                  value={resendEmail}
+                  onChange={(e) => setResendEmail(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-gray-300"
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                  inputMode="email"
+                />
+                <button
+                  type="button"
+                  onClick={resendConfirmationEmail}
+                  disabled={resendLoading || !(resendEmail || email).trim()}
+                  className={[
+                    "w-full rounded-2xl px-4 py-3 text-sm sm:text-base font-semibold",
+                    "focus:outline-none focus:ring-2 focus:ring-gray-300",
+                    resendLoading || !(resendEmail || email).trim()
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      : "bg-gray-900 text-white hover:bg-gray-800",
+                  ].join(" ")}
+                >
+                  {resendLoading ? "再送中…" : "確認メールを再送する"}
+                </button>
+                <div className="text-xs text-gray-600 leading-relaxed">
+                  迷惑メールフォルダ、受信拒否設定（特に携帯キャリアメール）、メールアドレスの入力ミスもご確認ください。
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="text-sm text-gray-700">
             {mode === "signup" ? (
