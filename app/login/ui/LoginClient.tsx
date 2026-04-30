@@ -60,6 +60,8 @@ export function LoginClient() {
   const [confirmRecoveryPassword, setConfirmRecoveryPassword] = React.useState("");
   const [recoverySubmitLoading, setRecoverySubmitLoading] = React.useState(false);
   const [resendDetail, setResendDetail] = React.useState<string | null>(null);
+  /** 新規登録直後：確認メール案内のみ表示（ログインへは進めない） */
+  const [signupEmailPending, setSignupEmailPending] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     const sb = supabaseBrowser();
@@ -82,14 +84,18 @@ export function LoginClient() {
     try {
       const sb = supabaseBrowser();
       if (mode === "signup") {
-        const { error } = await sb.auth.signUp({ email, password });
+        const { data: signUpData, error } = await sb.auth.signUp({ email, password });
         if (error) throw error;
-        setResendEmail(email);
-        setResendOpen(true);
-        setMessage(
-          "確認メールを送信しました。メール内のリンクから認証した後にログインしてください。届かない場合は下のボタンから再送できます。",
-        );
-        setMode("signin");
+        if (signUpData.session) {
+          await sb.auth.signOut();
+        }
+        const sentTo = email.trim();
+        setResendEmail(sentTo);
+        setSignupEmailPending(sentTo);
+        setPassword("");
+        setMessage(null);
+        setResendDetail(null);
+        setResendOpen(false);
       } else {
         const { error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -104,7 +110,7 @@ export function LoginClient() {
   };
 
   const resendConfirmationEmail = async () => {
-    const targetEmail = (resendEmail || email).trim();
+    const targetEmail = (resendEmail || email || signupEmailPending || "").trim();
     if (!targetEmail) {
       setMessage("メールアドレスを入力してください。");
       setResendDetail(null);
@@ -259,13 +265,99 @@ export function LoginClient() {
       <div className="ui-card px-6 py-7 sm:px-8 sm:py-8">
         <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-semibold tracking-wide text-gray-900 mb-2">
-            {mode === "signup" ? "新規登録" : "ログイン"}
+            {signupEmailPending
+              ? "メールを確認してください"
+              : mode === "signup"
+                ? "新規登録"
+                : "ログイン"}
           </h1>
           <p className="text-sm text-gray-600 leading-relaxed">
-            診断データをユーザーごとに保存するためにログインします。
+            {signupEmailPending
+              ? "確認が完了するまでログインできません。届いたメールの案内にしたがってください。"
+              : "診断データをユーザーごとに保存するためにログインします。"}
           </p>
         </div>
 
+        {signupEmailPending ? (
+          <div className="grid grid-cols-1 gap-5">
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 px-5 py-5 sm:px-6 sm:py-6">
+              <div className="text-lg font-semibold text-emerald-950 mb-3">確認メールを送信しました</div>
+              <p className="text-sm text-gray-800 leading-relaxed mb-3">
+                <span className="font-mono text-gray-900 break-all">{signupEmailPending}</span>
+                宛に、登録確認用のメールを送りました。
+              </p>
+              <ul className="text-sm text-gray-800 space-y-2 list-disc pl-5 leading-relaxed mb-4">
+                <li>
+                  メール内の<strong className="font-semibold">確認用リンク</strong>
+                  を開き、表示された画面で確認を完了してください。
+                </li>
+                <li>確認が終わるまで、このアプリにはログインできません（セキュリティのため）。</li>
+              </ul>
+              <p className="text-sm text-gray-700 leading-relaxed border-t border-emerald-200/80 pt-4">
+                届かないときは、
+                <strong className="font-semibold text-gray-900">迷惑メール・プロモーション</strong>
+                フォルダや、キャリアメールの受信設定、メールアドレスの打ち間違いもあわせてご確認ください。
+              </p>
+            </div>
+
+            {message && (
+              <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800">
+                {message}
+              </div>
+            )}
+
+            {showResendDebugLine && resendDetail && (
+              <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50/80 px-4 py-2 text-xs text-gray-600 font-mono break-all">
+                再送デバッグ（サポート用）: {resendDetail}
+              </div>
+            )}
+
+            <div className="rounded-xl border border-gray-200 bg-white px-4 py-4">
+              <div className="text-sm font-semibold text-gray-900 mb-2">確認メールを再送する</div>
+              <p className="text-xs text-gray-600 leading-relaxed mb-3">
+                未認証の登録がある場合のみ再送されます。メールアドレスを修正する場合は下欄を書き換えてください。
+              </p>
+              <div className="grid grid-cols-1 gap-3">
+                <input
+                  type="email"
+                  value={resendEmail}
+                  onChange={(e) => setResendEmail(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-gray-300"
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                  inputMode="email"
+                />
+                <button
+                  type="button"
+                  onClick={resendConfirmationEmail}
+                  disabled={resendLoading || !resendEmail.trim()}
+                  className={[
+                    "w-full rounded-2xl px-4 py-3 text-sm sm:text-base font-semibold",
+                    "focus:outline-none focus:ring-2 focus:ring-gray-300",
+                    resendLoading || !resendEmail.trim()
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      : "bg-gray-900 text-white hover:bg-gray-800",
+                  ].join(" ")}
+                >
+                  {resendLoading ? "再送中…" : "確認メールを再送する"}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setSignupEmailPending(null);
+                setMode("signin");
+                setMessage(null);
+                setResendDetail(null);
+              }}
+              className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-4 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
+            >
+              ログイン画面へ戻る
+            </button>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 gap-4">
           <div>
             <label
@@ -430,7 +522,10 @@ export function LoginClient() {
               すでに登録済みで「ログインできない」「パスワードが分からない」場合は、
               <button
                 type="button"
-                onClick={() => setMode("signin")}
+                onClick={() => {
+                  setSignupEmailPending(null);
+                  setMode("signin");
+                }}
                 className="font-semibold text-gray-900 underline underline-offset-2 mx-0.5"
               >
                 ログイン画面
@@ -486,7 +581,10 @@ export function LoginClient() {
             {mode === "signup" ? (
               <button
                 type="button"
-                onClick={() => setMode("signin")}
+                onClick={() => {
+                  setSignupEmailPending(null);
+                  setMode("signin");
+                }}
                 className="font-semibold underline underline-offset-2"
               >
                 すでにアカウントがある → ログイン
@@ -494,7 +592,10 @@ export function LoginClient() {
             ) : (
               <button
                 type="button"
-                onClick={() => setMode("signup")}
+                onClick={() => {
+                  setSignupEmailPending(null);
+                  setMode("signup");
+                }}
                 className="font-semibold underline underline-offset-2"
               >
                 はじめて → 新規登録
@@ -502,6 +603,7 @@ export function LoginClient() {
             )}
           </div>
         </div>
+        )}
       </div>
     </div>
   );
