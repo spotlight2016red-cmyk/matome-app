@@ -1,6 +1,6 @@
--- アバター型の保存を security definer RPC に統一する。
--- authenticated が user_profiles に対して UPDATE 権限を持たない環境でも保存できる。
--- avatar_type が NOT NULL の DB でも動くよう、null を挿入せず upsert のみにする。
+-- 2026-05-01 初版で insert(uid, null) していた DB 向けの修正。
+-- avatar_type NOT NULL のとき「null value in column avatar_type violates not-null constraint」を防ぐ。
+-- 内容は 2026-05-01 修正版と同じ（create or replace のため複数回適用しても安全）。
 
 create or replace function public.set_my_avatar_type(new_type text)
 returns void
