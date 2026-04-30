@@ -88,11 +88,10 @@ export default function HomePage() {
                 href="/"
                 className="block rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 hover:bg-gray-100"
               >
-                <div className="text-sm font-semibold text-gray-900">
-                  組織図ダッシュボード
-                </div>
-                <div className="mt-1 text-xs text-gray-600">
-                  Figma 由来のトップ画面（現状維持）
+                <div className="text-sm font-semibold text-gray-900">トップに戻る</div>
+                <div className="mt-1 text-xs font-normal text-gray-600 leading-relaxed">
+                  <span className="block">組織図ダッシュボード</span>
+                  <span className="block text-gray-500">Figma 由来のトップ画面（現状維持）</span>
                 </div>
               </Link>
               <Link
