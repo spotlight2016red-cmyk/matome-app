@@ -776,6 +776,13 @@ export function OrganizationChart() {
 
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <Link
+            href="/home"
+            title="成長のホーム（マイページ）"
+            className="inline-flex items-center justify-center rounded-2xl bg-gray-900 px-5 py-3 text-base font-semibold text-white shadow-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-300"
+          >
+            ホームへ
+          </Link>
+          <Link
             href="/state-check"
             className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-base font-semibold text-emerald-900 shadow-sm hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-300"
           >
