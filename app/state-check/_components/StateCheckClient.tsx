@@ -466,9 +466,10 @@ export function StateCheckClient() {
         <div className="mb-3 flex flex-wrap gap-2">
           <Link
             href="/home"
+            title="成長のホーム（マイページ）"
             className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
           >
-            マイページへ
+            ホームへ
           </Link>
           <Link
             href={avatarDiagnosisRedoHref("/state-check")}
