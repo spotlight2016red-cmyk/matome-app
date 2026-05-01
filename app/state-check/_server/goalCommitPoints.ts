@@ -1,32 +1,39 @@
 import type { GoalMapRow } from "./types";
 
-export type GoalPointAward = { tier: "small" | "middle" | "big"; points: number };
+/** 各階層を「初めて一文以上決めた」ときのボーナス（再編集では付与しない） */
+export const GOAL_COMMIT_POINTS = {
+  small: 10,
+  middle: 12,
+  big: 15,
+} as const;
 
-const PTS = { small: 10, middle: 15, big: 20 } as const;
-
-function blank(s: unknown): boolean {
+export function goalTierEmpty(s: unknown): boolean {
   return !String(s ?? "").trim();
 }
 
+type GoalTierFields = Pick<GoalMapRow, "small_goal" | "middle_goal" | "big_goal">;
+
 /**
- * 大・中・小ゴールの「本文」が空から非空になったときだけポイント（初回確定扱い）。
- * purpose や success_criteria のみの変更では付与しない。
+ * サーバーに保存されていた前回値が空で、今回の保存で初めて非空になった階層にポイントを付与する。
  */
-export function awardsForGoalTextCommit(
-  previous: Pick<GoalMapRow, "small_goal" | "middle_goal" | "big_goal"> | null,
-  saved: Pick<GoalMapRow, "small_goal" | "middle_goal" | "big_goal">
-): { delta: number; awards: GoalPointAward[] } {
-  const prev = previous ?? { small_goal: "", middle_goal: "", big_goal: "" };
-  const awards: GoalPointAward[] = [];
-  if (blank(prev.small_goal) && !blank(saved.small_goal)) {
-    awards.push({ tier: "small", points: PTS.small });
-  }
-  if (blank(prev.middle_goal) && !blank(saved.middle_goal)) {
-    awards.push({ tier: "middle", points: PTS.middle });
-  }
-  if (blank(prev.big_goal) && !blank(saved.big_goal)) {
-    awards.push({ tier: "big", points: PTS.big });
-  }
-  const delta = awards.reduce((sum, a) => sum + a.points, 0);
-  return { delta, awards };
+export function commitmentPointsDelta(
+  prev: GoalTierFields | null,
+  next: GoalTierFields
+): { total: number; small: number; middle: number; big: number } {
+  const p: GoalTierFields = prev ?? {
+    small_goal: "",
+    middle_goal: "",
+    big_goal: "",
+  };
+  const small =
+    goalTierEmpty(p.small_goal) && !goalTierEmpty(next.small_goal)
+      ? GOAL_COMMIT_POINTS.small
+      : 0;
+  const middle =
+    goalTierEmpty(p.middle_goal) && !goalTierEmpty(next.middle_goal)
+      ? GOAL_COMMIT_POINTS.middle
+      : 0;
+  const big =
+    goalTierEmpty(p.big_goal) && !goalTierEmpty(next.big_goal) ? GOAL_COMMIT_POINTS.big : 0;
+  return { total: small + middle + big, small, middle, big };
 }

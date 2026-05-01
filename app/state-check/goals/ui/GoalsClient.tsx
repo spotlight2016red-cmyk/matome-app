@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { todayDayKeyJST } from "../../_lib/dayKey";
+import { GOAL_COMMIT_POINTS } from "../../_server/goalCommitPoints";
 
 type GoalMap = {
   id: string;
@@ -38,11 +39,6 @@ function progressStorageKey(dayKey: string) {
 
 function draftStorageKey() {
   return "goalDraft:v1";
-}
-
-function describeGoalPointAwards(awards: { tier: string; points: number }[]) {
-  const label: Record<string, string> = { small: "小ゴール", middle: "中ゴール", big: "大ゴール" };
-  return awards.map((a) => `${label[a.tier] ?? a.tier} +${a.points}pt`).join("、");
 }
 
 function clampProgress(n: number) {
@@ -211,7 +207,13 @@ export function GoalsClient() {
           success_criteria: goal.success_criteria,
         }),
       });
-      const json = (await res.json()) as any;
+      const json = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        goal?: GoalMap | null;
+        goal_commit_points?: { small: number; middle: number; big: number; total: number };
+        points?: number;
+      };
       if (!json?.ok) throw new Error(json?.error ?? "保存に失敗しました");
       const savedGoal = (json.goal ?? null) as GoalMap | null;
       if (savedGoal) {
@@ -219,10 +221,15 @@ export function GoalsClient() {
         setLastSavedGoal(savedGoal);
       }
       setSavedAt(new Date().toLocaleString("ja-JP"));
-      const awards = (json.goal_point_awards ?? null) as { tier: string; points: number }[] | null;
-      const delta = typeof json.points_delta === "number" ? json.points_delta : 0;
-      if (awards && awards.length > 0 && delta > 0) {
-        setSaveMessage(`保存しました（${describeGoalPointAwards(awards)}）`);
+      const gp = json.goal_commit_points;
+      if (gp && gp.total > 0) {
+        const parts: string[] = [];
+        if (gp.small) parts.push(`小ゴール初回 +${gp.small}pt`);
+        if (gp.middle) parts.push(`中ゴール初回 +${gp.middle}pt`);
+        if (gp.big) parts.push(`大ゴール初回 +${gp.big}pt`);
+        const tail =
+          typeof json.points === "number" ? ` ・ 現在 ${json.points}pt` : "";
+        setSaveMessage(`${parts.join("、")}${tail}`);
       } else {
         setSaveMessage("保存しました");
       }
@@ -239,25 +246,32 @@ export function GoalsClient() {
 
   const isDirty = React.useMemo(() => {
     if (!goal) return false;
+    const sg = goal.small_goal ?? "";
+    const sp = goal.small_goal_purpose ?? "";
+    const sc = goal.success_criteria ?? "";
+    const mg = goal.middle_goal ?? "";
+    const mp = goal.middle_goal_purpose ?? "";
+    const bg = goal.big_goal ?? "";
+    const bp = goal.big_goal_purpose ?? "";
     if (!lastSavedGoal) {
       return Boolean(
-        goal.small_goal.trim() ||
-          (goal.small_goal_purpose ?? "").trim() ||
-          (goal.success_criteria ?? "").trim() ||
-          goal.middle_goal.trim() ||
-          (goal.middle_goal_purpose ?? "").trim() ||
-          goal.big_goal.trim() ||
-          (goal.big_goal_purpose ?? "").trim()
+        sg.trim() ||
+        sp.trim() ||
+        sc.trim() ||
+        mg.trim() ||
+        mp.trim() ||
+        bg.trim() ||
+        bp.trim()
       );
     }
     return (
-      goal.small_goal !== lastSavedGoal.small_goal ||
-      (goal.small_goal_purpose ?? "") !== (lastSavedGoal.small_goal_purpose ?? "") ||
-      (goal.success_criteria ?? "") !== (lastSavedGoal.success_criteria ?? "") ||
-      goal.middle_goal !== lastSavedGoal.middle_goal ||
-      (goal.middle_goal_purpose ?? "") !== (lastSavedGoal.middle_goal_purpose ?? "") ||
-      goal.big_goal !== lastSavedGoal.big_goal ||
-      (goal.big_goal_purpose ?? "") !== (lastSavedGoal.big_goal_purpose ?? "")
+      sg !== (lastSavedGoal.small_goal ?? "") ||
+      (sp ?? "") !== (lastSavedGoal.small_goal_purpose ?? "") ||
+      (sc ?? "") !== (lastSavedGoal.success_criteria ?? "") ||
+      mg !== (lastSavedGoal.middle_goal ?? "") ||
+      (mp ?? "") !== (lastSavedGoal.middle_goal_purpose ?? "") ||
+      bg !== (lastSavedGoal.big_goal ?? "") ||
+      (bp ?? "") !== (lastSavedGoal.big_goal_purpose ?? "")
     );
   }, [goal, lastSavedGoal]);
 
@@ -297,12 +311,12 @@ export function GoalsClient() {
       <h1 className="text-2xl sm:text-3xl font-semibold tracking-wide text-gray-900 mb-3">
         ゴール整理
       </h1>
-      <p className="text-sm text-gray-700 leading-relaxed mb-6">
+      <p className="text-sm text-gray-700 leading-relaxed mb-2">
         小ゴール（今やること）を 1 つだけ決めて、NextMove の基準にします。
-        <span className="block mt-2 text-xs text-gray-600">
-          大・中・小ゴールの本文を、はじめて空でない状態で保存したときにポイントが入ります（小 +10pt、中
-          +15pt、大 +20pt。同じ保存で複数入ることもあります）。
-        </span>
+      </p>
+      <p className="text-xs text-gray-500 leading-relaxed mb-6">
+        小・中・大ゴールをそれぞれ初めて入力して保存するとポイントが付きます（小 +{GOAL_COMMIT_POINTS.small}pt
+        ・中 +{GOAL_COMMIT_POINTS.middle}pt ・大 +{GOAL_COMMIT_POINTS.big}pt。再編集では付与されません）。
       </p>
 
       {loading ? (
