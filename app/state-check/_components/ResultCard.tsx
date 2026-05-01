@@ -3,7 +3,7 @@
 import * as React from "react";
 import type { StateCheckComputation } from "../_lib/logic";
 import { chooseNextMove } from "../_lib/nextMove";
-import { NextMoveCard, type SmallGoalCompleteResult } from "./NextMoveCard";
+import { NextMoveCard } from "./NextMoveCard";
 
 function Badge({ children }: { children: React.ReactNode }) {
   return (
@@ -18,16 +18,17 @@ export function ResultCard({
   goal,
   onReset,
   onCommitToNextStep,
-  onSmallGoalComplete,
-  onScrollToMemo,
+  onCompleteSmallGoal,
 }: {
   computation: StateCheckComputation;
   goal?: { smallGoal?: string | null; todayProgress?: number | null };
   onReset: () => void;
-  /** 小ゴール以外の「いま〜する」押下後: メモ欄へ誘導 */
+  /** 「いま〜する」押下後: メモ欄へ誘導するなど */
   onCommitToNextStep?: () => void;
-  onSmallGoalComplete?: () => Promise<SmallGoalCompleteResult>;
-  onScrollToMemo?: () => void;
+  onCompleteSmallGoal?: (smallGoalName: string) => Promise<
+    | { ok: true; awarded: boolean; pointsDelta: number }
+    | { ok: false; message: string }
+  >;
 }) {
   const { result, scores, heatMode } = computation;
   const [excludedMoveIds, setExcludedMoveIds] = React.useState<string[]>([]);
@@ -63,8 +64,7 @@ export function ResultCard({
         <NextMoveCard
           move={move}
           onCommitToNextStep={onCommitToNextStep}
-          onSmallGoalComplete={onSmallGoalComplete}
-          onScrollToMemo={onScrollToMemo}
+          onCompleteSmallGoal={onCompleteSmallGoal}
           onSuggestAlternative={() => {
             setExcludedMoveIds((prev) => (prev.includes(move.id) ? prev : [...prev, move.id]));
           }}
