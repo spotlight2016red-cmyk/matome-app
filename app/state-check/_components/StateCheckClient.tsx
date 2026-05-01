@@ -20,6 +20,7 @@ import { avatarDiagnosisRedoHref } from "@/app/lib/avatarDiagnosis";
 import { normalizeAvatarType, type AvatarType } from "@/app/lib/avatarImage";
 
 const POINT_RULES: readonly { label: string; points: number }[] = [
+  { label: "診断を完了（結果を見る・1日1回）", points: 1 },
   { label: "診断を記録", points: 10 },
 ];
 
@@ -278,6 +279,36 @@ export function StateCheckClient() {
     });
     return () => window.cancelAnimationFrame(id);
   }, [mode]);
+
+  React.useEffect(() => {
+    if (mode !== "result" || authed !== true) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/state-check/view-bonus", { method: "POST" });
+        if (cancelled) return;
+        if (res.status === 401) return;
+        const json = (await res.json()) as {
+          ok?: boolean;
+          awarded?: boolean;
+          points?: number;
+        };
+        if (!json?.ok || typeof json.points !== "number") return;
+        setServerPoints(json.points);
+        if (json.awarded) {
+          setPtGain({ delta: 1, key: String(Date.now()) });
+          window.setTimeout(() => {
+            if (!cancelled) setPtGain(null);
+          }, 1300);
+        }
+      } catch {
+        // ignore（未ログイン・マイグレ未適用など）
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, authed]);
 
   const handleReset = () => {
     setAnswers({});
