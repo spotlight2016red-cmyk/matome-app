@@ -24,6 +24,8 @@ export function HomeClient() {
   const dayKey = React.useMemo(() => todayDayKeyJST(), []);
   /** 初回フェッチ完了。未確定の間は AvatarGrowthCard を出さない（explorer フォールバックの誤解を防ぐ） */
   const [homeBootstrapDone, setHomeBootstrapDone] = React.useState(false);
+  /** プロフィール API が失敗（診断未実施とは別。ここで診断へ飛ばすと診断直後の再送になりやすい） */
+  const [profileFetchFailed, setProfileFetchFailed] = React.useState(false);
 
   React.useEffect(() => {
     let mounted = true;
@@ -42,37 +44,50 @@ export function HomeClient() {
           setServerPoints(null);
           setAvatarType(null);
           setSmallGoal(null);
+          setProfileFetchFailed(false);
           return;
         }
-        const [runsRes, pointsRes, profileRes] = await Promise.all([
+        setProfileFetchFailed(false);
+        const [runsRes, pointsRes] = await Promise.all([
           fetch("/api/diagnosis", { method: "GET" }),
           fetch("/api/points", { method: "GET" }),
-          fetch("/api/profile", { method: "GET" }),
         ]);
+        let profileRes: Response | null = null;
+        let profileJson: { ok?: boolean; avatarType?: string | null } | null = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const res = await fetch("/api/profile", { method: "GET" });
+          const json = (await res.json()) as { ok?: boolean; avatarType?: string | null };
+          profileRes = res;
+          profileJson = json;
+          if (res.ok && json?.ok) break;
+          if (attempt === 0) await new Promise((r) => setTimeout(r, 400));
+        }
         const goalsRes = await fetch("/api/goals", { method: "GET" });
         const runsJson = (await runsRes.json()) as any;
         const pointsJson = (await pointsRes.json()) as any;
-        const profileJson = (await profileRes.json()) as any;
         const goalsJson = (await goalsRes.json()) as any;
         if (!mounted) return;
         if (runsJson?.ok) setHistory(runsJson.runs ?? []);
         if (pointsJson?.ok && typeof pointsJson.points === "number") {
           setServerPoints(Number(pointsJson.points));
         }
-        if (profileRes.ok && profileJson?.ok) {
+        if (profileRes?.ok && profileJson?.ok) {
           const at = profileJson.avatarType;
           if (at == null) {
             setAvatarType(null);
+            setProfileFetchFailed(false);
             router.replace("/avatar-diagnosis?next=/home");
           } else if (typeof at === "string") {
             setAvatarType(normalizeAvatarType(at));
+            setProfileFetchFailed(false);
           } else {
             setAvatarType(null);
+            setProfileFetchFailed(false);
+            router.replace("/avatar-diagnosis?next=/home");
           }
         } else {
-          // プロフィール取得失敗時も未診断と同様に診断へ（再試行より先に型を確定できる可能性がある）
           setAvatarType(null);
-          router.replace("/avatar-diagnosis?next=/home");
+          setProfileFetchFailed(true);
         }
         if (goalsJson?.ok) {
           const first = (goalsJson.goals?.[0] ?? null) as any;
@@ -158,6 +173,17 @@ export function HomeClient() {
       ) : authed === null || !homeBootstrapDone ? (
         <div className="rounded-3xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur px-6 py-10 text-center text-sm text-gray-600">
           読み込み中…
+        </div>
+      ) : authed === true && profileFetchFailed ? (
+        <div className="rounded-3xl border border-amber-200 bg-amber-50/80 shadow-sm backdrop-blur px-6 py-6 text-sm text-amber-950 space-y-3">
+          <p>プロフィールを読み込めませんでした。診断は完了している場合も、一時的な通信エラーで表示できるまで時間をおくか、再読み込みしてください。</p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="inline-flex items-center justify-center rounded-2xl bg-amber-900 px-4 py-3 text-sm font-semibold text-white hover:bg-amber-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
+          >
+            再読み込み
+          </button>
         </div>
       ) : authed === true && avatarType === null ? (
         <div className="rounded-3xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur px-6 py-10 text-center text-sm text-gray-600">
