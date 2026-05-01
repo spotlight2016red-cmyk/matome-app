@@ -30,6 +30,8 @@ export function HomeClient() {
   const [homeBootstrapDone, setHomeBootstrapDone] = React.useState(false);
   /** プロフィール API が失敗（診断未実施とは別。ここで診断へ飛ばすと診断直後の再送になりやすい） */
   const [profileFetchFailed, setProfileFetchFailed] = React.useState(false);
+  /** 最後の /api/profile 失敗内容（原因切り分け用。サーバーが返す `error` または HTTP/HTML の先頭） */
+  const [profileErrorHint, setProfileErrorHint] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     let mounted = true;
@@ -49,18 +51,30 @@ export function HomeClient() {
           setAvatarType(null);
           setSmallGoal(null);
           setProfileFetchFailed(false);
+          setProfileErrorHint(null);
           return;
         }
         setProfileFetchFailed(false);
+        setProfileErrorHint(null);
         const optimisticAvatar = peekPendingAvatarType();
         // プロフィールは他 API と同時だと失敗しやすいので先に取り、短いバックオフで複数回試す。
         let profileRes: Response | null = null;
-        let profileJson: { ok?: boolean; avatarType?: string | null } | null = null;
+        let profileJson: { ok?: boolean; avatarType?: string | null; error?: string } | null =
+          null;
         const profileAttempts = 5;
         for (let attempt = 0; attempt < profileAttempts; attempt++) {
           if (attempt > 0) await new Promise((r) => setTimeout(r, 400));
           const res = await fetch("/api/profile", { method: "GET" });
-          const json = (await res.json()) as { ok?: boolean; avatarType?: string | null };
+          const text = await res.text();
+          let json: { ok?: boolean; avatarType?: string | null; error?: string } = {};
+          try {
+            json = text ? (JSON.parse(text) as typeof json) : {};
+          } catch {
+            json = {
+              ok: false,
+              error: text ? `非JSON応答 (${text.slice(0, 160)}…)` : "空の応答",
+            };
+          }
           profileRes = res;
           profileJson = json;
           if (res.ok && json?.ok) break;
@@ -110,6 +124,13 @@ export function HomeClient() {
           } else {
             setAvatarType(null);
             setProfileFetchFailed(true);
+            const hint =
+              typeof profileJson?.error === "string"
+                ? profileJson.error
+                : profileRes
+                  ? `HTTP ${profileRes.status}`
+                  : "プロフィール応答を解釈できませんでした";
+            setProfileErrorHint(hint);
           }
         }
         if (goalsJson?.ok) {
@@ -119,13 +140,18 @@ export function HomeClient() {
         } else {
           setSmallGoal(null);
         }
-      } catch {
+      } catch (e) {
         if (!mounted) return;
-        setAuthed(false);
+        // ログイン済みのままフェッチだけ失敗したケースを、誤ってログアウト表示にしない
+        setAuthed((prev) => (prev === true ? true : prev));
         setHistory([]);
         setServerPoints(null);
         setAvatarType(null);
         setSmallGoal(null);
+        setProfileFetchFailed(true);
+        setProfileErrorHint(
+          e instanceof Error ? e.message : "読み込み中にエラーが発生しました",
+        );
       } finally {
         if (mounted) setHomeBootstrapDone(true);
       }
@@ -206,6 +232,18 @@ export function HomeClient() {
         <div className="rounded-3xl border border-amber-200 bg-amber-50/80 shadow-sm backdrop-blur px-6 py-6 text-sm text-amber-950 space-y-3">
           <p>
             プロフィールを読み込めませんでした。一時的な通信エラーのことがあります。再読み込みするか、未診断の場合はアバター診断から進めてください。
+          </p>
+          {profileErrorHint ? (
+            <div className="rounded-xl border border-amber-300/60 bg-white/90 px-3 py-2 text-xs text-amber-950 break-words">
+              <span className="font-semibold">詳細（開発者向け）:</span> {profileErrorHint}
+            </div>
+          ) : null}
+          <p className="text-xs text-amber-900/90">
+            環境変数の有無は{" "}
+            <a href="/api/env-check" className="underline font-semibold">
+              /api/env-check
+            </a>{" "}
+            を別タブで開いて確認できます（Supabase URL / キーが false なら Vercel の設定不足です）。
           </p>
           <div className="flex flex-col sm:flex-row flex-wrap gap-2">
             <button
