@@ -1,5 +1,13 @@
-import { listGoalMaps, upsertGoalMap } from "@/app/state-check/_server/goalRepo";
+import { getGoalMapByIdForUser, listGoalMaps, upsertGoalMap } from "@/app/state-check/_server/goalRepo";
+import { awardsForGoalTextCommit } from "@/app/state-check/_server/goalCommitPoints";
+import { incrementMyPoints } from "@/app/state-check/_server/pointsRepo";
 import { requireUserId } from "@/app/state-check/_server/auth";
+
+const GOAL_ROW_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isGoalRowId(raw: unknown): raw is string {
+  return typeof raw === "string" && GOAL_ROW_ID_RE.test(raw);
+}
 
 function jsonError(message: string, status = 400) {
   return Response.json({ ok: false, error: message }, { status });
@@ -22,6 +30,7 @@ export async function POST(request: Request) {
     if (!userId) return jsonError("Unauthorized", 401);
     const body = (await request.json()) as any;
     if (!body || typeof body !== "object") return jsonError("Invalid body");
+    const prev = isGoalRowId(body.id) ? await getGoalMapByIdForUser({ userId, id: body.id }) : null;
     const saved = await upsertGoalMap({
       id: body.id,
       user_id: userId,
@@ -33,7 +42,16 @@ export async function POST(request: Request) {
       small_goal_purpose: body.small_goal_purpose ?? null,
       success_criteria: body.success_criteria ?? null,
     });
-    return Response.json({ ok: true, goal: saved });
+    const { delta, awards } = awardsForGoalTextCommit(prev, saved);
+    let points: number | undefined;
+    if (delta > 0) {
+      points = await incrementMyPoints(delta);
+    }
+    return Response.json({
+      ok: true,
+      goal: saved,
+      ...(delta > 0 ? { points_delta: delta, points, goal_point_awards: awards } : {}),
+    });
   } catch (e) {
     return jsonError(e instanceof Error ? e.message : "Unknown error", 500);
   }

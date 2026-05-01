@@ -14,6 +14,18 @@ export async function listGoalMaps(params: { userId: string; limit?: number }) {
   return (data ?? []) as GoalMapRow[];
 }
 
+export async function getGoalMapByIdForUser(params: { userId: string; id: string }) {
+  const sb = await supabaseServer();
+  const { data, error } = await sb
+    .from("goal_maps")
+    .select("*")
+    .eq("user_id", params.userId)
+    .eq("id", params.id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data ?? null) as GoalMapRow | null;
+}
+
 export async function upsertGoalMap(input: GoalMapInsert & { id?: string }) {
   const sb = await supabaseServer();
   const payload: any = { ...input };
