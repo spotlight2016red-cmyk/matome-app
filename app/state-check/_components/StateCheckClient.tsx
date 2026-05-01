@@ -84,6 +84,8 @@ export function StateCheckClient() {
     | { kind: "saved" }
     | { kind: "error"; message: string }
   >({ kind: "idle" });
+  /** 初回プロフィール取得前は AvatarGrowthCard を出さない（未診断と explorer 画像の誤解防止） */
+  const [profileFetchDone, setProfileFetchDone] = React.useState(false);
 
   const allAnswered = isAllAnswered(answers);
   const done = answeredCount(answers);
@@ -208,13 +210,15 @@ export function StateCheckClient() {
           void refreshTrends();
           void refreshGoal();
           void refreshPoints();
-          void refreshProfile();
+          await refreshProfile();
+          if (mounted) setProfileFetchDone(true);
         } else {
           setHistory([]);
           setTrendState({ recentTendencies: [], recoveryStyles: [] });
           setSmallGoal(null);
           setServerPoints(null);
           setAvatarType(null);
+          setProfileFetchDone(true);
         }
       } catch {
         if (!mounted) return;
@@ -224,6 +228,7 @@ export function StateCheckClient() {
         setSmallGoal(null);
         setServerPoints(null);
         setAvatarType(null);
+        setProfileFetchDone(true);
       }
     })();
     return () => {
@@ -542,13 +547,19 @@ export function StateCheckClient() {
           </div>
         )}
         <div className="mt-4">
-          <AvatarGrowthCard
-            avatarType={avatarType ?? undefined}
-            level={level}
-            points={points}
-            nextLevelAt={nextLevelAt}
-            variant="status"
-          />
+          {authed === true && !profileFetchDone ? (
+            <div className="flex min-h-[180px] items-center justify-center rounded-3xl border border-gray-200 bg-gray-50 px-6 text-sm text-gray-500">
+              読み込み中…
+            </div>
+          ) : (
+            <AvatarGrowthCard
+              avatarType={avatarType ?? undefined}
+              level={level}
+              points={points}
+              nextLevelAt={nextLevelAt}
+              variant="status"
+            />
+          )}
         </div>
         <div className="mt-3 text-xs text-gray-600">
           {POINT_RULES.map((r) => (

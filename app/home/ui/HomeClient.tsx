@@ -22,6 +22,9 @@ export function HomeClient() {
   const [smallGoal, setSmallGoal] = React.useState<string | null>(null);
   const [todayProgress, setTodayProgress] = React.useState<number | null>(null);
   const dayKey = React.useMemo(() => todayDayKeyJST(), []);
+  /** 初回フェッチ完了。未確定の間は AvatarGrowthCard を出さない（explorer フォールバックの誤解を防ぐ） */
+  const [homeBootstrapDone, setHomeBootstrapDone] = React.useState(false);
+  const [profileLoadError, setProfileLoadError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     let mounted = true;
@@ -40,6 +43,7 @@ export function HomeClient() {
           setServerPoints(null);
           setAvatarType(null);
           setSmallGoal(null);
+          setProfileLoadError(null);
           return;
         }
         const [runsRes, pointsRes, profileRes] = await Promise.all([
@@ -57,7 +61,8 @@ export function HomeClient() {
         if (pointsJson?.ok && typeof pointsJson.points === "number") {
           setServerPoints(Number(pointsJson.points));
         }
-        if (profileJson?.ok) {
+        if (profileRes.ok && profileJson?.ok) {
+          setProfileLoadError(null);
           const at = profileJson.avatarType;
           if (at == null) {
             setAvatarType(null);
@@ -67,6 +72,9 @@ export function HomeClient() {
           } else {
             setAvatarType(null);
           }
+        } else {
+          setProfileLoadError("プロフィールを読み込めませんでした。時間をおいて再読み込みしてください。");
+          setAvatarType(null);
         }
         if (goalsJson?.ok) {
           const first = (goalsJson.goals?.[0] ?? null) as any;
@@ -82,6 +90,9 @@ export function HomeClient() {
         setServerPoints(null);
         setAvatarType(null);
         setSmallGoal(null);
+        setProfileLoadError(null);
+      } finally {
+        if (mounted) setHomeBootstrapDone(true);
       }
     })();
     return () => {
@@ -146,6 +157,18 @@ export function HomeClient() {
       {authed === false ? (
         <div className="rounded-3xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur px-6 py-6 text-sm text-gray-700">
           ログインすると、ポイント/レベルとアバター成長が有効になります。
+        </div>
+      ) : authed === null || !homeBootstrapDone ? (
+        <div className="rounded-3xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur px-6 py-10 text-center text-sm text-gray-600">
+          読み込み中…
+        </div>
+      ) : profileLoadError ? (
+        <div className="rounded-3xl border border-amber-200 bg-amber-50/80 shadow-sm backdrop-blur px-6 py-6 text-sm text-amber-950">
+          {profileLoadError}
+        </div>
+      ) : authed === true && avatarType === null ? (
+        <div className="rounded-3xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur px-6 py-10 text-center text-sm text-gray-600">
+          アバター診断へ移動しています…
         </div>
       ) : (
         <div className="space-y-3">
