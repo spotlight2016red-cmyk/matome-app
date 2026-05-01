@@ -165,7 +165,7 @@ export const STATE_CHECK_QUESTIONS: readonly Question[] = [
       },
       {
         id: "b",
-        label: "まあある",
+        label: "まぁ、ある",
         add: { heat: 2, propulsion: 0, confusion: 0, exhaustion: 0, recoveryNeed: 0 },
       },
       {
