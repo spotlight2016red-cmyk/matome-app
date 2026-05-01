@@ -69,10 +69,12 @@ export function StateCheckClient() {
   const [ptGain, setPtGain] = React.useState<
     null | { delta: number; key: string; caption?: string }
   >(null);
-  /** 診断結果表示時の +1pt（API 確定後。結果エリアに常時表示） */
-  const [viewCompletionPt, setViewCompletionPt] = React.useState<
-    null | "awarded" | "already_today"
+  /** 診断結果表示まわりの +1pt（pending→API で確定。結果エリアに表示） */
+  const [viewBonusLine, setViewBonusLine] = React.useState<
+    null | "pending" | "awarded" | "already_today" | "failed"
   >(null);
+  /** React Strict 等で同じ表示セッションに二度 POST したとき、付与済みを「本日分済み」で上書きしない */
+  const viewBonusAwardedLatchRef = React.useRef(false);
   const [levelUp, setLevelUp] = React.useState<null | { toLevel: number; key: string }>(null);
   const [saveToast, setSaveToast] = React.useState<null | {
     kind: "saving" | "saved" | "error";
@@ -273,6 +275,12 @@ export function StateCheckClient() {
 
   const handleShowResult = () => {
     if (!allAnswered) return;
+    viewBonusAwardedLatchRef.current = false;
+    if (authed === true) {
+      setViewBonusLine("pending");
+    } else {
+      setViewBonusLine(null);
+    }
     setMode("result");
   };
 
@@ -290,34 +298,46 @@ export function StateCheckClient() {
     if (mode !== "result" || authed !== true) return;
     let cancelled = false;
     void (async () => {
+      setViewBonusLine((prev) =>
+        prev === "awarded" || prev === "already_today" ? prev : "pending"
+      );
       try {
         const res = await fetch("/api/state-check/view-bonus", { method: "POST" });
         if (cancelled) return;
-        if (res.status === 401) return;
+        if (res.status === 401) {
+          if (!cancelled) setViewBonusLine(null);
+          return;
+        }
         const json = (await res.json()) as {
           ok?: boolean;
           awarded?: boolean;
           points?: number;
         };
-        if (!json?.ok || typeof json.points !== "number") return;
+        if (!json?.ok || typeof json.points !== "number") {
+          if (!cancelled) setViewBonusLine("failed");
+          return;
+        }
         setServerPoints(json.points);
         if (json.awarded) {
-          setViewCompletionPt("awarded");
+          viewBonusAwardedLatchRef.current = true;
+          setViewBonusLine("awarded");
           const linger = 5200;
           setPtGain({
             delta: 1,
             key: String(Date.now()),
             caption:
-              "質問に答えて診断結果まで進んだボーナスです（ログイン時・1日1回）。メモを記録すると別に +10pt。",
+              "いま、この画面で診断結果が表示されたタイミングで +1pt を付けました（1日1回）。メモを記録すると別に +10pt。",
           });
           window.setTimeout(() => {
             if (!cancelled) setPtGain(null);
           }, linger);
         } else {
-          setViewCompletionPt("already_today");
+          if (cancelled) return;
+          if (viewBonusAwardedLatchRef.current) return;
+          setViewBonusLine("already_today");
         }
       } catch {
-        // ignore（未ログイン・マイグレ未適用など）
+        if (!cancelled) setViewBonusLine("failed");
       }
     })();
     return () => {
@@ -331,7 +351,8 @@ export function StateCheckClient() {
     setMemo("");
     setRunKind("morning");
     setSaveState({ kind: "idle" });
-    setViewCompletionPt(null);
+    viewBonusAwardedLatchRef.current = false;
+    setViewBonusLine(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -646,8 +667,8 @@ export function StateCheckClient() {
             </div>
           ))}
           <p className="mt-2 text-[11px] text-gray-500 leading-relaxed">
-            「診断を完了」の +1pt は、<strong className="font-semibold text-gray-600">診断結果が表示されたとき</strong>
-            に自動で付きます（ログイン時・1日1回）。画面を下に進めると反映メッセージが出ます。
+            「診断を完了」の +1pt は、<strong className="font-semibold text-gray-600">「診断結果を見る」を押して、このページに結果が出た直後</strong>
+            に付きます（ログイン時・1日1回）。まずはその場で「確認中→付与しました」と表示されます。
           </p>
         </div>
         <p className="text-sm sm:text-base text-gray-700 leading-relaxed mb-3">
@@ -663,22 +684,43 @@ export function StateCheckClient() {
       {mode === "result" && computation ? (
         <div className="space-y-8">
           <div id="state-check-diagnosis-result" className="scroll-mt-4 space-y-4">
-            {viewCompletionPt === "awarded" && (
+            {viewBonusLine === "pending" && (
+              <div
+                className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950 leading-relaxed"
+                role="status"
+                aria-live="polite"
+              >
+                <span className="font-semibold text-sky-900">確認中</span>
+                … いまこの画面に診断結果が出たことをサーバーに伝え、
+                <span className="font-semibold"> +1pt（1日1回）</span>
+                を付けられるか判定しています。
+              </div>
+            )}
+            {viewBonusLine === "awarded" && (
               <div
                 className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950 leading-relaxed"
                 role="status"
                 aria-live="polite"
               >
                 <span className="font-semibold">+1pt</span>
-                を付けました（質問に答えて診断結果まで進んだ分・ログイン時・1日1回）。メモを「記録する」と
+                を付けました。
+                <span className="block mt-1.5 text-xs opacity-95">
+                  タイミング：「診断結果を見る」を押して、この結果が表示された直後です（ログイン時・1日1回）。
+                </span>
+                メモを「記録する」と
                 <span className="font-semibold"> さらに +10pt</span>（別ルール）です。
               </div>
             )}
-            {viewCompletionPt === "already_today" && (
+            {viewBonusLine === "already_today" && (
               <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 leading-relaxed">
                 今日の「診断を完了」<span className="font-semibold">+1pt</span>
-                はすでに付与済みです。メモを記録すると
+                は、すでに別の回で付与済みです（同じ日に2回目は付きません）。メモを記録すると
                 <span className="font-semibold"> +10pt</span> が別に付きます。
+              </div>
+            )}
+            {viewBonusLine === "failed" && (
+              <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-900 leading-relaxed">
+                ポイントの反映を確認できませんでした（通信またはサーバー設定の可能性）。ログイン状態と、しばらくしてからの再読み込みを試してください。
               </div>
             )}
             <ResultCard
@@ -883,6 +925,17 @@ export function StateCheckClient() {
             >
               診断結果を見る
             </button>
+            {allAnswered && authed === true && (
+              <p className="mt-2 text-xs text-gray-600 leading-relaxed">
+                押すと下に結果が開き、<span className="font-semibold">表示された直後</span>に今日の分の
+                <span className="font-semibold"> +1pt</span>（1日1回）を付けます。まず「確認中」と出ます。
+              </p>
+            )}
+            {allAnswered && authed === false && (
+              <p className="mt-2 text-xs text-gray-500 leading-relaxed">
+                ログイン後は、結果が表示されたタイミングで +1pt（1日1回）が付くことがあります。
+              </p>
+            )}
             {!allAnswered && (
               <p className="mt-2 text-xs text-gray-500">
                 {STATE_CHECK_QUESTIONS.length}問すべて回答すると結果が表示できます。
