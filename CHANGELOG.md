@@ -104,6 +104,7 @@ GitHub の [Commits](https://github.com/spotlight2016red-cmyk/matome-app/commits
 | 2026-05 | 状態チェック: 診断結果表示で +1pt（JST 同一日1回）`POST /api/state-check/view-bonus`＋記録用テーブル | `5a26470` |
 | 2026-05 | 状態チェック: 次の一手の黒ボタンでメモ欄へスクロール＋案内、「押せなかった」は説明パネル＋別案CTA | `6995ad1` |
 | 2026-05 | 状態チェック: 診断完了 +1pt を結果上バナー・ヒーロー説明・トーストで明示 | `4e138cb` |
+| 2026-05 | 状態チェック: +1pt は結果表示直後と明示（確認中→確定、ボタン下案内、Strict 二重 POST 上書き防止） | `ffcca77` |
 
 ---
 
