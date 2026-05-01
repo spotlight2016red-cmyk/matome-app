@@ -98,6 +98,7 @@ GitHub の [Commits](https://github.com/spotlight2016red-cmyk/matome-app/commits
 | 2026-05 | Supabase サーバー `setAll`: `cookieStore.set(name,value,options)` に修正し書き込み失敗を握りつぶし（API 500 対策） | `8e48e02` |
 | 2026-05 | 診断一覧 GET: `day_key` 未適用DBで落ちないよう `select('*')`＋`day_key` マイグレーション追加 | `deec949` |
 | 2026-05 | ホーム黄枠: `/api/profile` のエラー詳細表示・env-check 案内・フェッチ例外時の誤ログアウト防止 | `835d866` |
+| 2026-05 | 状態チェックからホームは `Link`/`router.push` をやめフルロード（`location.assign`）に統一 | `61f18fb` |
 
 ---
 
