@@ -267,8 +267,17 @@ export function StateCheckClient() {
   const handleShowResult = () => {
     if (!allAnswered) return;
     setMode("result");
-    window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  React.useEffect(() => {
+    if (mode !== "result") return;
+    const el = document.getElementById("state-check-diagnosis-result");
+    if (!el) return;
+    const id = window.requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [mode]);
 
   const handleReset = () => {
     setAnswers({});
@@ -581,11 +590,13 @@ export function StateCheckClient() {
 
       {mode === "result" && computation ? (
         <div className="space-y-8">
+          <div id="state-check-diagnosis-result" className="scroll-mt-4">
           <ResultCard
             computation={computation}
             goal={{ smallGoal, todayProgress }}
             onReset={handleReset}
           />
+          </div>
 
           <section className="rounded-2xl border border-gray-200 bg-white shadow-sm px-6 py-6">
             <div className="text-xs text-gray-500 mb-1">利用タイミング</div>
