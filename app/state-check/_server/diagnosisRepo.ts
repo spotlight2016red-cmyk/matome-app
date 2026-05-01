@@ -15,9 +15,10 @@ export async function createDiagnosisRun(input: DiagnosisRunInsert) {
 export async function listDiagnosisRuns(params?: { limit?: number }) {
   const limit = params?.limit ?? 30;
   const sb = await supabaseServer();
+  // 列はマイグレーション順で揃わない環境があるため * にし、存在する列だけ返す（day_key 未適用で 500 になるのを防ぐ）
   const { data, error } = await sb
     .from("diagnosis_runs")
-    .select("id, created_at, day_key, run_kind, result_type, note_text, propulsion_score, fatigue_score, confusion_score, recovery_score, heat_score")
+    .select("*")
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw new Error(error.message);
