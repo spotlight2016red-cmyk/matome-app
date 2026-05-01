@@ -84,6 +84,7 @@ GitHub の [Commits](https://github.com/spotlight2016red-cmyk/matome-app/commits
 | 2026-05 | メール未確認・未ログインを /home・/state-check・/avatar-diagnosis で遮断（proxy + API） | `ff28df8` |
 | 2026-05 | 診断前の `user_profiles` 作成で explorer を自動設定しない（API は null 挿入・RPC 再定義） | `4c57255` |
 | 2026-05 | プロフィール取得前はアバター枠を読み込み表示に（explorer 画像の誤解防止） | `feac501` |
+| 2026-05 | ホームでプロフィール取得失敗時はアバター診断へ誘導（エラー文は出さない） | `78d1cfd` |
 
 ---
 
