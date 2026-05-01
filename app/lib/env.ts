@@ -12,7 +12,10 @@ export function getSupabasePublicEnv(): {
   // - For client components, Next.js only inlines NEXT_PUBLIC_* when referenced statically.
   // - Avoid process.env[name] dynamic access here, otherwise the client bundle won't get env.
   const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const rawAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  // Supabase is migrating from legacy anon key to publishable key.
+  // Support both to avoid "env set mismatch" between deployments.
+  const rawAnonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   const url = rawUrl && rawUrl.trim() ? rawUrl : undefined;
   const anonKey = rawAnonKey && rawAnonKey.trim() ? rawAnonKey : undefined;
   return {

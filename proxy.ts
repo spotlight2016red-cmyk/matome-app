@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { getSupabasePublicEnv } from "@/app/lib/env";
 
 /** ログイン必須かつメール確認済みのみ（診断アプリ本体） */
 const PROTECTED_PREFIXES = ["/home", "/state-check", "/avatar-diagnosis"];
@@ -21,15 +22,14 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anon) {
+  const { url, anonKey } = getSupabasePublicEnv();
+  if (!url || !anonKey) {
     return NextResponse.next({ request });
   }
 
   let supabaseResponse = NextResponse.next({ request });
 
-  const supabase = createServerClient(url, anon, {
+  const supabase = createServerClient(url, anonKey, {
     cookies: {
       getAll() {
         return request.cookies.getAll();
