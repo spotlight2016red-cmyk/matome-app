@@ -96,6 +96,7 @@ GitHub の [Commits](https://github.com/spotlight2016red-cmyk/matome-app/commits
 | 2026-05 | 状態チェック Q8 熱量の選択肢「まあある」→「まぁ、ある」 | `f3b9a0a` |
 | 2026-05 | ホーム: 記録直後 `?gained=` で `router.replace` をやめ履歴のみ整理、プロフィールを先に最大5回リトライ | `91e3fcc` |
 | 2026-05 | Supabase サーバー `setAll`: `cookieStore.set(name,value,options)` に修正し書き込み失敗を握りつぶし（API 500 対策） | `8e48e02` |
+| 2026-05 | 診断一覧 GET: `day_key` 未適用DBで落ちないよう `select('*')`＋`day_key` マイグレーション追加 | `deec949` |
 
 ---
 
