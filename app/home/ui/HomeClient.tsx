@@ -10,6 +10,7 @@ import { AvatarGrowthCard } from "@/app/components/AvatarGrowthCard";
 import { todayDayKeyJST } from "@/app/state-check/_lib/dayKey";
 import { avatarDiagnosisRedoHref } from "@/app/lib/avatarDiagnosis";
 import { normalizeAvatarType, type AvatarType } from "@/app/lib/avatarImage";
+import { consumePendingAvatarType } from "@/app/lib/avatarOptimisticSession";
 
 export function HomeClient() {
   const router = useRouter();
@@ -48,6 +49,7 @@ export function HomeClient() {
           return;
         }
         setProfileFetchFailed(false);
+        const optimisticAvatar = consumePendingAvatarType();
         const [runsRes, pointsRes] = await Promise.all([
           fetch("/api/diagnosis", { method: "GET" }),
           fetch("/api/points", { method: "GET" }),
@@ -74,20 +76,35 @@ export function HomeClient() {
         if (profileRes?.ok && profileJson?.ok) {
           const at = profileJson.avatarType;
           if (at == null) {
-            setAvatarType(null);
-            setProfileFetchFailed(false);
-            router.replace("/avatar-diagnosis?next=/home");
+            if (optimisticAvatar) {
+              setAvatarType(optimisticAvatar);
+              setProfileFetchFailed(false);
+            } else {
+              setAvatarType(null);
+              setProfileFetchFailed(false);
+              router.replace("/avatar-diagnosis?next=/home");
+            }
           } else if (typeof at === "string") {
             setAvatarType(normalizeAvatarType(at));
             setProfileFetchFailed(false);
           } else {
-            setAvatarType(null);
-            setProfileFetchFailed(false);
-            router.replace("/avatar-diagnosis?next=/home");
+            if (optimisticAvatar) {
+              setAvatarType(optimisticAvatar);
+              setProfileFetchFailed(false);
+            } else {
+              setAvatarType(null);
+              setProfileFetchFailed(false);
+              router.replace("/avatar-diagnosis?next=/home");
+            }
           }
         } else {
-          setAvatarType(null);
-          setProfileFetchFailed(true);
+          if (optimisticAvatar) {
+            setAvatarType(optimisticAvatar);
+            setProfileFetchFailed(false);
+          } else {
+            setAvatarType(null);
+            setProfileFetchFailed(true);
+          }
         }
         if (goalsJson?.ok) {
           const first = (goalsJson.goals?.[0] ?? null) as any;
@@ -176,14 +193,25 @@ export function HomeClient() {
         </div>
       ) : authed === true && profileFetchFailed ? (
         <div className="rounded-3xl border border-amber-200 bg-amber-50/80 shadow-sm backdrop-blur px-6 py-6 text-sm text-amber-950 space-y-3">
-          <p>プロフィールを読み込めませんでした。診断は完了している場合も、一時的な通信エラーで表示できるまで時間をおくか、再読み込みしてください。</p>
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="inline-flex items-center justify-center rounded-2xl bg-amber-900 px-4 py-3 text-sm font-semibold text-white hover:bg-amber-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
-          >
-            再読み込み
-          </button>
+          <p>
+            プロフィールを読み込めませんでした。一時的な通信エラーのことがあります。再読み込みするか、未診断の場合はアバター診断から進めてください。
+          </p>
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="inline-flex flex-1 min-w-[140px] items-center justify-center rounded-2xl bg-amber-900 px-4 py-3 text-sm font-semibold text-white hover:bg-amber-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            >
+              再読み込み
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push("/avatar-diagnosis?next=/home")}
+              className="inline-flex flex-1 min-w-[140px] items-center justify-center rounded-2xl border border-amber-900/40 bg-white px-4 py-3 text-sm font-semibold text-amber-950 hover:bg-amber-100/80 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            >
+              アバター診断へ
+            </button>
+          </div>
         </div>
       ) : authed === true && avatarType === null ? (
         <div className="rounded-3xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur px-6 py-10 text-center text-sm text-gray-600">

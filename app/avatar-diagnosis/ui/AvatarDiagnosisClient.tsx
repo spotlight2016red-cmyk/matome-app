@@ -15,6 +15,7 @@ import {
   normalizeAvatarType,
   type AvatarType,
 } from "@/app/lib/avatarImage";
+import { setPendingAvatarTypeAfterSave } from "@/app/lib/avatarOptimisticSession";
 
 const RESULT_REVEAL_MS = 480;
 
@@ -214,6 +215,7 @@ export function AvatarDiagnosisClient() {
       const json = (await res.json()) as { ok?: boolean; error?: string };
       if (res.status === 401) throw new Error("ログインしてください");
       if (!json?.ok) throw new Error(json?.error ?? "保存に失敗しました");
+      setPendingAvatarTypeAfterSave(result);
       router.replace(next);
     } catch (e) {
       setError(e instanceof Error ? e.message : "保存に失敗しました");
