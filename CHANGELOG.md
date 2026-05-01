@@ -78,6 +78,7 @@ GitHub の [Commits](https://github.com/spotlight2016red-cmyk/matome-app/commits
 | 2026-05 | avatar_type 保存を RPC 化（再診断時の user_profiles 権限エラー対策） | `322fcdd` |
 | 2026-05 | set_my_avatar_type を upsert に修正（avatar_type NOT NULL 時の保存エラー対策） | `ed2f459` |
 | 2026-05 | 初回アバター診断5問・タイプ名（導き手等）・診断ロジック共通化・avatar_type null 化の再確認 | `270d171` |
+| 2026-05 | 現在地診断ヘッダの `/home` 導線表記を「ホームへ」に（マイページは title で補足） | `5ca3012` |
 | 2026-05 | ホーム「ショートカット」のトップを「トップに戻る」太字＋組織図を細字に | `0f207c5` |
 | 2026-05 | アバター診断の結果画面強化（集計挟み・攻略ポイント・NextMove ヒント・小ゴール連携） | `be042f3` |
 | 2026-05 | 新規登録成功時は確認メール案内のみ表示（即ログインしない・再送・ログインへ戻る） | `214cd0e` |
