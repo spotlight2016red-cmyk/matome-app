@@ -7,6 +7,16 @@ function jsonError(message: string, status = 400) {
   return Response.json({ ok: false, error: message }, { status });
 }
 
+function isViewBonusTableMissingOrDenied(msg: string, code?: string): boolean {
+  const m = msg.toLowerCase();
+  const namesTable = m.includes("state_check_daily_view_bonus");
+  const looksMissing =
+    code === "42P01" ||
+    /does not exist|schema cache|could not find|not find the table/i.test(m);
+  const looksDenied = code === "42501" || /permission denied/i.test(m);
+  return namesTable && (looksMissing || looksDenied);
+}
+
 /** 診断結果を表示した日に +1pt（同一日は1回まで）。記録の +10pt とは別。 */
 export async function POST() {
   try {
@@ -23,9 +33,20 @@ export async function POST() {
 
     if (insertError) {
       const code = (insertError as { code?: string }).code;
+      const msg = insertError.message ?? "";
       if (code === "23505") {
         const points = await getMyPoints();
         return Response.json({ ok: true, awarded: false, points });
+      }
+      if (isViewBonusTableMissingOrDenied(msg, code)) {
+        console.error("[view-bonus] table missing or denied:", insertError);
+        const points = await getMyPoints();
+        return Response.json({
+          ok: true,
+          awarded: false,
+          points,
+          view_bonus_unconfigured: true,
+        });
       }
       throw new Error(insertError.message);
     }

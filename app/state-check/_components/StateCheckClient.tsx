@@ -71,7 +71,7 @@ export function StateCheckClient() {
   >(null);
   /** 診断結果表示まわりの +1pt（pending→API で確定。結果エリアに表示） */
   const [viewBonusLine, setViewBonusLine] = React.useState<
-    null | "pending" | "awarded" | "already_today" | "failed"
+    null | "pending" | "awarded" | "already_today" | "skipped_config" | "failed"
   >(null);
   /** React Strict 等で同じ表示セッションに二度 POST したとき、付与済みを「本日分済み」で上書きしない */
   const viewBonusAwardedLatchRef = React.useRef(false);
@@ -312,12 +312,18 @@ export function StateCheckClient() {
           ok?: boolean;
           awarded?: boolean;
           points?: number;
+          view_bonus_unconfigured?: boolean;
+          error?: string;
         };
         if (!json?.ok || typeof json.points !== "number") {
           if (!cancelled) setViewBonusLine("failed");
           return;
         }
         setServerPoints(json.points);
+        if (json.view_bonus_unconfigured) {
+          if (!cancelled) setViewBonusLine("skipped_config");
+          return;
+        }
         if (json.awarded) {
           viewBonusAwardedLatchRef.current = true;
           setViewBonusLine("awarded");
@@ -718,9 +724,19 @@ export function StateCheckClient() {
                 <span className="font-semibold"> +10pt</span> が別に付きます。
               </div>
             )}
+            {viewBonusLine === "skipped_config" && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 leading-relaxed">
+                診断結果はそのままご利用できます。
+                <span className="block mt-1.5 text-xs text-amber-900/90">
+                  <strong>+1pt</strong>（診断を完了）だけ、Supabase にボーナス用テーブルがまだ無い／権限が足りないため付けられていません。SQL
+                  マイグレーション「<span className="font-mono">2026-05-07_state_check_daily_view_bonus.sql</span>
+                  」を本番 DB に適用してください。メモの記録（<strong>+10pt</strong>）は別経路です。
+                </span>
+              </div>
+            )}
             {viewBonusLine === "failed" && (
               <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-900 leading-relaxed">
-                ポイントの反映を確認できませんでした（通信またはサーバー設定の可能性）。ログイン状態と、しばらくしてからの再読み込みを試してください。
+                ポイントの反映を確認できませんでした（通信または想定外のサーバーエラー）。ログイン状態と、しばらくしてからの再読み込みを試してください。
               </div>
             )}
             <ResultCard
