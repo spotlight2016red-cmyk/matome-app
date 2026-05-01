@@ -93,6 +93,7 @@ GitHub の [Commits](https://github.com/spotlight2016red-cmyk/matome-app/commits
 | 2026-05 | 診断保存後のホームでプロフィール遅延・失敗を sessionStorage で吸収＋診断へ導線 | `83701b4` |
 | 2026-05 | アバター保存直後: 楽観値を peek で保持・サーバー確定で clear、遷移は `location.assign`＋`next` を safe 化 | `4b0f1b3` |
 | 2026-05 | ゴール整理: 小・中・大を初めて入力して保存したときだけポイント付与（API＋説明・保存トースト） | `42bfc9c` |
+| 2026-05 | 状態チェック Q8 熱量の選択肢「まあある」→「まぁ、ある」 | `f3b9a0a` |
 
 ---
 
