@@ -34,6 +34,7 @@ export function InsightEditor({
       </p>
 
       <textarea
+        id="state-check-insight-note"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         rows={5}

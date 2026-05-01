@@ -319,6 +319,16 @@ export function StateCheckClient() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const scrollToInsight = React.useCallback(() => {
+    document.getElementById("state-check-insight")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+    window.setTimeout(() => {
+      document.getElementById("state-check-insight-note")?.focus({ preventScroll: true });
+    }, 450);
+  }, []);
+
   const handleSaveThisRun = async () => {
     if (!computation) return;
     setSaveState({ kind: "saving" });
@@ -626,6 +636,7 @@ export function StateCheckClient() {
             computation={computation}
             goal={{ smallGoal, todayProgress }}
             onReset={handleReset}
+            onCommitToNextStep={scrollToInsight}
           />
           </div>
 
@@ -667,13 +678,15 @@ export function StateCheckClient() {
             </div>
           </section>
 
-          <InsightEditor
-            value={memo}
-            onChange={setMemo}
-            onSave={handleSaveThisRun}
-            disabled={saveState.kind === "saving"}
-            pointsHint="記録すると +10pt"
-          />
+          <div id="state-check-insight" className="scroll-mt-6">
+            <InsightEditor
+              value={memo}
+              onChange={setMemo}
+              onSave={handleSaveThisRun}
+              disabled={saveState.kind === "saving"}
+              pointsHint="記録すると +10pt"
+            />
+          </div>
 
           {saveState.kind !== "idle" && (
             <div

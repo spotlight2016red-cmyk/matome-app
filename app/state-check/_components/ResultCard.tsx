@@ -17,18 +17,19 @@ export function ResultCard({
   computation,
   goal,
   onReset,
+  onCommitToNextStep,
 }: {
   computation: StateCheckComputation;
   goal?: { smallGoal?: string | null; todayProgress?: number | null };
   onReset: () => void;
+  /** 「いま〜する」押下後: メモ欄へ誘導するなど */
+  onCommitToNextStep?: () => void;
 }) {
   const { result, scores, heatMode } = computation;
   const [excludedMoveIds, setExcludedMoveIds] = React.useState<string[]>([]);
-  const [altUnlocked, setAltUnlocked] = React.useState(false);
 
   React.useEffect(() => {
     setExcludedMoveIds([]);
-    setAltUnlocked(false);
   }, [computation.debug?.chosenId]);
 
   const move = React.useMemo(
@@ -57,11 +58,7 @@ export function ResultCard({
       <div className="space-y-5">
         <NextMoveCard
           move={move}
-          onDoNow={() => {
-            // The UI goal is commitment; we don't auto-log an event yet.
-          }}
-          onCouldNot={() => setAltUnlocked(true)}
-          showAlternativeButton={altUnlocked}
+          onCommitToNextStep={onCommitToNextStep}
           onSuggestAlternative={() => {
             setExcludedMoveIds((prev) => (prev.includes(move.id) ? prev : [...prev, move.id]));
           }}
