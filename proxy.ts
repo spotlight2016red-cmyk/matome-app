@@ -17,11 +17,7 @@ function copyCookies(from: NextResponse, to: NextResponse) {
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  if (
-    pathname.startsWith("/api") ||
-    pathname.startsWith("/_next") ||
-    pathname === "/favicon.ico"
-  ) {
+  if (pathname.startsWith("/_next") || pathname === "/favicon.ico") {
     return NextResponse.next({ request });
   }
 
@@ -51,6 +47,11 @@ export async function proxy(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  // `/api` でも getUser まで通す（トークン更新を Cookie に載せる）。認可は各 Route で行う。
+  if (pathname.startsWith("/api")) {
+    return supabaseResponse;
+  }
 
   if (!isProtectedPath(pathname)) {
     return supabaseResponse;
