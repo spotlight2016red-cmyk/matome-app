@@ -91,6 +91,7 @@ GitHub の [Commits](https://github.com/spotlight2016red-cmyk/matome-app/commits
 | 2026-05 | プロフィール取得失敗で診断へ飛ばさない・再試行と再読み込み案内（診断直後の誤遷移防止） | `cc6b8be` |
 | 2026-05 | アバター診断：選択肢下に「一つ前の質問に戻る」・結果画面から最後の質問へ戻る | `e37cd4c` |
 | 2026-05 | 診断保存後のホームでプロフィール遅延・失敗を sessionStorage で吸収＋診断へ導線 | `83701b4` |
+| 2026-05 | アバター保存直後: 楽観値を peek で保持・サーバー確定で clear、遷移は `location.assign`＋`next` を safe 化 | `4b0f1b3` |
 
 ---
 
