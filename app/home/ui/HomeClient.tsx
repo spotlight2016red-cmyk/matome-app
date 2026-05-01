@@ -10,7 +10,10 @@ import { AvatarGrowthCard } from "@/app/components/AvatarGrowthCard";
 import { todayDayKeyJST } from "@/app/state-check/_lib/dayKey";
 import { avatarDiagnosisRedoHref } from "@/app/lib/avatarDiagnosis";
 import { normalizeAvatarType, type AvatarType } from "@/app/lib/avatarImage";
-import { consumePendingAvatarType } from "@/app/lib/avatarOptimisticSession";
+import {
+  clearPendingAvatarType,
+  peekPendingAvatarType,
+} from "@/app/lib/avatarOptimisticSession";
 
 export function HomeClient() {
   const router = useRouter();
@@ -49,7 +52,7 @@ export function HomeClient() {
           return;
         }
         setProfileFetchFailed(false);
-        const optimisticAvatar = consumePendingAvatarType();
+        const optimisticAvatar = peekPendingAvatarType();
         const [runsRes, pointsRes] = await Promise.all([
           fetch("/api/diagnosis", { method: "GET" }),
           fetch("/api/points", { method: "GET" }),
@@ -87,6 +90,7 @@ export function HomeClient() {
           } else if (typeof at === "string") {
             setAvatarType(normalizeAvatarType(at));
             setProfileFetchFailed(false);
+            clearPendingAvatarType();
           } else {
             if (optimisticAvatar) {
               setAvatarType(optimisticAvatar);

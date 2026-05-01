@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getConfirmedAuthStatus } from "@/app/lib/confirmedSession";
+import { getConfirmedAuthStatus, safeAppNextPath } from "@/app/lib/confirmedSession";
 import {
   AVATAR_DIAGNOSIS_QUESTIONS,
   AVATAR_TYPE_RESULT_COPY,
@@ -22,7 +22,7 @@ const RESULT_REVEAL_MS = 480;
 export function AvatarDiagnosisClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/home";
+  const nextPath = safeAppNextPath(searchParams.get("next")) ?? "/home";
   const redo = searchParams.get("redo") === "1";
 
   const [authed, setAuthed] = React.useState<boolean | null>(null);
@@ -76,7 +76,7 @@ export function AvatarDiagnosisClient() {
           if (typeof at === "string") {
             setServerAvatarType(normalizeAvatarType(at));
             if (!redo) {
-              router.replace(next);
+              router.replace(nextPath);
               return;
             }
           } else {
@@ -93,7 +93,7 @@ export function AvatarDiagnosisClient() {
     return () => {
       mounted = false;
     };
-  }, [next, redo, router]);
+  }, [nextPath, redo, router]);
 
   React.useEffect(() => {
     if (!result || aggregating) return;
@@ -216,13 +216,14 @@ export function AvatarDiagnosisClient() {
       if (res.status === 401) throw new Error("ログインしてください");
       if (!json?.ok) throw new Error(json?.error ?? "保存に失敗しました");
       setPendingAvatarTypeAfterSave(result);
-      router.replace(next);
+      // フルロードで Cookie とホーム初回フェッチを揃える（router.replace だけだと直後が不安定になりやすい）
+      window.location.assign(nextPath);
     } catch (e) {
       setError(e instanceof Error ? e.message : "保存に失敗しました");
     } finally {
       setSaving(false);
     }
-  }, [next, result, router]);
+  }, [nextPath, result]);
 
   if (loading) {
     return (
@@ -468,7 +469,7 @@ export function AvatarDiagnosisClient() {
 
       {!aggregating && (
         <div className="mt-6 text-xs text-gray-500">
-          <Link href={next} className="underline underline-offset-2">
+          <Link href={nextPath} className="underline underline-offset-2">
             {result ? "保存せずに戻る" : "いったん戻る"}
           </Link>
           {result && (
