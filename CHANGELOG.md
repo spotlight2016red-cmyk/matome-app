@@ -100,6 +100,7 @@ GitHub の [Commits](https://github.com/spotlight2016red-cmyk/matome-app/commits
 | 2026-05 | ホーム黄枠: `/api/profile` のエラー詳細表示・env-check 案内・フェッチ例外時の誤ログアウト防止 | `835d866` |
 | 2026-05 | 状態チェックからホームは `Link`/`router.push` をやめフルロード（`location.assign`）に統一 | `61f18fb` |
 | 2026-05 | Supabase: `user_profiles` に `authenticated` の GRANT マイグレーション（permission denied 対策） | `eb1405a` |
+| 2026-05 | 状態チェック:「診断結果を見る」でページ先頭へ飛ばしていたのを、診断結果枠へ `scrollIntoView` | `b63e40c` |
 
 ---
 
