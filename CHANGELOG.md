@@ -40,6 +40,7 @@ GitHub の [Commits](https://github.com/spotlight2016red-cmyk/matome-app/commits
 |-------------|------|----------|
 | 2026-04 | 映画統括を最上段フル幅リンク | `de4b5fc` |
 | 2026-04 | 四分野リンク・右クリックメニュー・共有 URL | `e678e58` |
+| 2026-05 | 組織図トップヘッダに `/home` への「ホームへ」を追加 | `eee91f6` |
 
 ## その他
 
