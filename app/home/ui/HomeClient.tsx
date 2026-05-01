@@ -26,6 +26,26 @@ export function HomeClient() {
   const [smallGoal, setSmallGoal] = React.useState<string | null>(null);
   const [todayProgress, setTodayProgress] = React.useState<number | null>(null);
   const dayKey = React.useMemo(() => todayDayKeyJST(), []);
+
+  const readGoalProgressClamped = React.useCallback((dk: string): number => {
+    if (typeof window === "undefined") return 0;
+    const raw = window.localStorage.getItem(`goalProgress:v1:${dk}`);
+    if (!raw) return 0;
+    try {
+      const parsed = JSON.parse(raw) as {
+        version?: number;
+        dayKey?: string;
+        progress?: number;
+      };
+      if (parsed?.version === 1 && parsed?.dayKey === dk) {
+        const p = Number(parsed.progress ?? 0);
+        return Math.max(0, Math.min(100, Math.round(p)));
+      }
+    } catch {
+      // ignore
+    }
+    return 0;
+  }, []);
   /** 初回フェッチ完了。未確定の間は AvatarGrowthCard を出さない（explorer フォールバックの誤解を防ぐ） */
   const [homeBootstrapDone, setHomeBootstrapDone] = React.useState(false);
   /** プロフィール API が失敗（診断未実施とは別。ここで診断へ飛ばすと診断直後の再送になりやすい） */
@@ -161,26 +181,32 @@ export function HomeClient() {
     };
   }, []);
 
+  React.useLayoutEffect(() => {
+    setTodayProgress(readGoalProgressClamped(dayKey));
+  }, [dayKey, readGoalProgressClamped]);
+
   React.useEffect(() => {
     if (typeof window === "undefined") return;
-    const raw = window.localStorage.getItem(`goalProgress:v1:${dayKey}`);
-    if (!raw) {
-      setTodayProgress(0);
-      return;
-    }
-    try {
-      const parsed = JSON.parse(raw) as any;
-      if (parsed?.version === 1 && parsed?.dayKey === dayKey) {
-        const p = Number(parsed.progress ?? 0);
-        const clamped = Math.max(0, Math.min(100, Math.round(p)));
-        setTodayProgress(clamped);
-        return;
-      }
-    } catch {
-      // ignore
-    }
-    setTodayProgress(0);
-  }, [dayKey]);
+    const sync = () => setTodayProgress(readGoalProgressClamped(dayKey));
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === `goalProgress:v1:${dayKey}`) sync();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") sync();
+    };
+    const onPageShow = (e: Event) => {
+      const pe = e as PageTransitionEvent;
+      if (pe.persisted) sync();
+    };
+    window.addEventListener("storage", onStorage);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, [dayKey, readGoalProgressClamped]);
 
   React.useEffect(() => {
     const raw = searchParams.get("gained");
@@ -216,6 +242,11 @@ export function HomeClient() {
     const prog = typeof todayProgress === "number" ? todayProgress : 0;
     if (sg && prog < 100) return `小ゴールを進める：${sg}`;
     return "状態チェックで、次の一手を出す";
+  }, [smallGoal, todayProgress]);
+
+  const goalDoneToday = React.useMemo(() => {
+    const sg = (smallGoal ?? "").trim();
+    return Boolean(sg) && typeof todayProgress === "number" && todayProgress >= 100;
   }, [smallGoal, todayProgress]);
 
   return (
@@ -282,8 +313,45 @@ export function HomeClient() {
             nextLevelAt={nextLevelAt}
           />
 
-          <section className="rounded-3xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur px-6 py-6">
-            <div className="text-xs text-gray-500 mb-2">今日の一手（1つだけ）</div>
+          {goalDoneToday && smallGoal?.trim() ? (
+            <section
+              className="rounded-3xl border-2 border-emerald-300 bg-gradient-to-b from-emerald-50/90 to-white shadow-sm backdrop-blur px-6 py-6"
+              aria-live="polite"
+            >
+              <div className="flex flex-wrap items-start gap-3">
+                <span
+                  className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-lg font-bold text-white shadow-sm"
+                  aria-hidden
+                >
+                  ✓
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-semibold text-emerald-800">今日の小ゴール・達成</div>
+                  <p className="mt-1 text-lg sm:text-xl font-semibold text-gray-900 leading-snug">
+                    「{smallGoal.trim()}」
+                  </p>
+                  <p className="mt-2 text-sm text-emerald-900/90 leading-relaxed">
+                    今日のノルマはここまで。次は状態チェックで整えましょう（下の「いまやる」）。
+                  </p>
+                  <p className="mt-2 text-xs text-gray-600">
+                    明日以降また進めたいときは、ゴール整理で進捗を戻すか、新しい小ゴールに更新できます。
+                  </p>
+                </div>
+              </div>
+            </section>
+          ) : null}
+
+          <section
+            className={[
+              "rounded-3xl border bg-white/80 shadow-sm backdrop-blur px-6 py-6",
+              goalDoneToday
+                ? "border-emerald-200 ring-1 ring-emerald-100"
+                : "border-gray-200",
+            ].join(" ")}
+          >
+            <div className="text-xs text-gray-500 mb-2">
+              {goalDoneToday ? "次の一手（今日はここから）" : "今日の一手（1つだけ）"}
+            </div>
             <div className="text-xl sm:text-2xl font-semibold text-gray-900 mb-4">
               {todayMove}
             </div>

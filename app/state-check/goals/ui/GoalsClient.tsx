@@ -461,6 +461,12 @@ export function GoalsClient() {
             <div className="mt-2 text-xs text-gray-500">
               これは「今日どれくらい進んだか」の自己申告メーターです（端末に保存）。
             </div>
+            {todayProgress >= 100 && goal.small_goal.trim() ? (
+              <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950 leading-relaxed">
+                <span className="font-semibold">本日はここまでお疲れさま。</span>
+                ホームでは「小ゴール・達成」として表示され、次の一手（状態チェック）に切り替わります。
+              </div>
+            ) : null}
           </section>
 
           <details className="rounded-2xl border border-gray-200 bg-gray-50 px-6 py-6">
