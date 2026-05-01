@@ -21,6 +21,7 @@ import { normalizeAvatarType, type AvatarType } from "@/app/lib/avatarImage";
 
 const POINT_RULES: readonly { label: string; points: number }[] = [
   { label: "診断を完了（結果を見る・1日1回）", points: 1 },
+  { label: "小ゴールを今日完了（結果の『…を完了する』・1日1回）", points: 5 },
   { label: "診断を記録", points: 10 },
 ];
 
@@ -371,6 +372,73 @@ export function StateCheckClient() {
       document.getElementById("state-check-insight-note")?.focus({ preventScroll: true });
     }, 450);
   }, []);
+
+  const persistTodayProgress100 = React.useCallback(() => {
+    if (typeof window === "undefined") return;
+    const payload = {
+      version: 1 as const,
+      dayKey,
+      progress: 100,
+      updatedAt: new Date().toISOString(),
+    };
+    window.localStorage.setItem(
+      `goalProgress:v1:${dayKey}`,
+      JSON.stringify(payload)
+    );
+    setTodayProgress(100);
+  }, [dayKey]);
+
+  const handleSmallGoalCompleteFromResult = React.useCallback(async () => {
+    if (authed !== true) {
+      persistTodayProgress100();
+      return { ok: true, guest: true as const };
+    }
+    try {
+      const res = await fetch("/api/state-check/complete-small-goal", {
+        method: "POST",
+      });
+      const json = (await res.json()) as {
+        ok?: boolean;
+        awarded?: boolean;
+        points?: number;
+        completion_bonus_unconfigured?: boolean;
+        error?: string;
+      };
+      if (res.status === 401) {
+        return {
+          ok: false,
+          error: "ログインが切れている可能性があります。再ログインしてからお試しください。",
+        };
+      }
+      if (!json?.ok || typeof json.points !== "number") {
+        return {
+          ok: false,
+          error: typeof json?.error === "string" ? json.error : "サーバーへの記録に失敗しました",
+        };
+      }
+      persistTodayProgress100();
+      setServerPoints(json.points);
+      if (json.awarded) {
+        setPtGain({
+          delta: 5,
+          key: String(Date.now()),
+          caption:
+            "小ゴールを今日完了にしたボーナスです（1日1回）。メモは下から任意で、記録すると別に +10pt。",
+        });
+        window.setTimeout(() => setPtGain(null), 5200);
+      }
+      return {
+        ok: true,
+        awarded: Boolean(json.awarded),
+        completion_bonus_unconfigured: Boolean(json.completion_bonus_unconfigured),
+      };
+    } catch (e) {
+      return {
+        ok: false,
+        error: e instanceof Error ? e.message : "通信に失敗しました",
+      };
+    }
+  }, [authed, persistTodayProgress100]);
 
   const handleSaveThisRun = async () => {
     if (!computation) return;
@@ -744,6 +812,8 @@ export function StateCheckClient() {
               goal={{ smallGoal, todayProgress }}
               onReset={handleReset}
               onCommitToNextStep={scrollToInsight}
+              onSmallGoalComplete={handleSmallGoalCompleteFromResult}
+              onScrollToMemo={scrollToInsight}
             />
           </div>
 

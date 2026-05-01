@@ -113,6 +113,8 @@ function buildCandidates(
   return candidates;
 }
 
+const GOAL_MOVE_PREFIX = "小ゴールを進める：";
+
 export function chooseNextMove(
   computation: StateCheckComputation,
   opts?: {
@@ -127,10 +129,15 @@ export function chooseNextMove(
   for (const c of candidates) {
     const id = makeMoveId("nm", c.label, idx++);
     if (excluded.has(id)) continue;
+    const plainGoal =
+      c.source === "goal.small_goal" && c.label.startsWith(GOAL_MOVE_PREFIX)
+        ? normalizeText(c.label.slice(GOAL_MOVE_PREFIX.length))
+        : "";
     return {
       id,
       label: c.label,
-      ctaLabel: `いま「${c.label}」する`,
+      ctaLabel:
+        plainGoal.length > 0 ? `『${plainGoal}』を完了する` : `いま「${c.label}」する`,
       source: c.source,
     };
   }

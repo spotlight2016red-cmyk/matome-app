@@ -9,9 +9,12 @@
   - `user_profiles` に `authenticated` の GRANT を付与（`permission denied for table user_profiles` 対策）。
 - `2026-05-07_state_check_daily_view_bonus.sql`
   - 診断完了 +1pt 用。未適用だと `/api/state-check/view-bonus` が失敗しうる（アプリ側は未設定時に穏やく案内するが、本番では適用推奨）。
+- `2026-05-08_state_check_small_goal_completion.sql`
+  - 結果画面で小ゴール完了 +5pt 用。未適用だと `/api/state-check/complete-small-goal` がポイント付与をスキップしうる。
 
 ### ポイント（状態チェック）
 - 上記「最低限」の `2026-05-07_state_check_daily_view_bonus.sql`：`POST /api/state-check/view-bonus` と併用（同一ユーザー・同一日に +1pt を1回）。
+- `2026-05-08_state_check_small_goal_completion.sql`：`POST /api/state-check/complete-small-goal`（同一ユーザー・同一日に小ゴール完了 +5pt を1回）。
 
 ### 既存のスキーマ一式（初回構築）
 既存の `../schema.sql` / `../dayflow.sql` / `../rls.sql` / `../dayflow_rls.sql` は
