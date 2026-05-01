@@ -166,6 +166,28 @@ export function AvatarDiagnosisClient() {
     setError(null);
   }, [aggregating, result, step]);
 
+  /** 結果画面から最後の質問だけやり直す */
+  const goBackFromResult = React.useCallback(() => {
+    if (!result) return;
+    if (revealTimerRef.current) {
+      clearTimeout(revealTimerRef.current);
+      revealTimerRef.current = null;
+    }
+    setResult(null);
+    setSmallGoalHint(null);
+    setAggregating(false);
+    const lastIdx = totalSteps - 1;
+    const lastQId = AVATAR_DIAGNOSIS_QUESTIONS[lastIdx].id;
+    setAnswers((prev) => {
+      const nextAns = { ...prev };
+      delete nextAns[lastQId];
+      return nextAns;
+    });
+    setStep(lastIdx);
+    setError(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [result, totalSteps]);
+
   const reset = React.useCallback(() => {
     if (revealTimerRef.current) {
       clearTimeout(revealTimerRef.current);
@@ -341,6 +363,14 @@ export function AvatarDiagnosisClient() {
                 </button>
                 <button
                   type="button"
+                  onClick={goBackFromResult}
+                  disabled={saving}
+                  className="inline-flex w-full sm:w-auto min-h-[52px] items-center justify-center rounded-2xl border border-gray-200 bg-white px-6 py-4 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
+                >
+                  一つ前の質問に戻る
+                </button>
+                <button
+                  type="button"
                   onClick={reset}
                   disabled={saving}
                   className="inline-flex w-full sm:w-auto min-h-[52px] items-center justify-center rounded-2xl border border-gray-200 bg-white px-6 py-4 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
@@ -386,7 +416,7 @@ export function AvatarDiagnosisClient() {
                   : "text-gray-700 hover:bg-gray-100",
               ].join(" ")}
             >
-              ← ひとつ前へ
+              ← 一つ前へ
             </button>
           </div>
 
@@ -414,6 +444,21 @@ export function AvatarDiagnosisClient() {
                   </button>
                 );
               })}
+            </div>
+            <div className="mt-5 pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={goBack}
+                disabled={step <= 0 && !aggregating}
+                className={[
+                  "w-full rounded-2xl border px-4 py-3.5 text-sm font-semibold transition-colors",
+                  step <= 0 && !aggregating
+                    ? "border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed"
+                    : "border-gray-200 bg-white text-gray-800 hover:bg-gray-50",
+                ].join(" ")}
+              >
+                ← 一つ前の質問に戻る
+              </button>
             </div>
           </section>
         </>
