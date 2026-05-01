@@ -5,57 +5,52 @@ import type { NextMove } from "../_lib/nextMove";
 
 export function NextMoveCard({
   move,
-  onCommitToNextStep,
   onSuggestAlternative,
 }: {
   move: NextMove;
-  /** 黒ボタン: いまやる、と決めたあとの導線（例: メモ欄へスクロール） */
-  onCommitToNextStep?: () => void;
   onSuggestAlternative: () => void;
 }) {
-  const [didAckDo, setDidAckDo] = React.useState(false);
+  const [applied, setApplied] = React.useState(false);
   const [couldNotOpen, setCouldNotOpen] = React.useState(false);
 
   React.useEffect(() => {
-    setDidAckDo(false);
+    setApplied(false);
     setCouldNotOpen(false);
   }, [move.id]);
 
-  const handleDoNow = () => {
-    setDidAckDo(true);
-    onCommitToNextStep?.();
-  };
+  const handleApply = () => setApplied(true);
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-white shadow-sm px-6 py-6">
-      <div className="text-xs text-gray-500 mb-1">参考の1歩（診断）</div>
+      <div className="text-xs text-gray-500 mb-1">今日の方針（診断）</div>
       <h2 className="text-xl sm:text-2xl font-semibold tracking-wide text-gray-900">
         {move.label}
       </h2>
       <p className="mt-2 text-xs text-gray-600 leading-relaxed">
-        ゴールは自分で決めたまま。「今日の1歩」に取り込んでから動くと進めやすくなります。
+        これは「参考・方針」です。実際の行動は下の<strong className="font-semibold">今日の1歩</strong>
+        で決めて進めます。
       </p>
 
       <div className="mt-4 grid grid-cols-1 gap-3">
         <button
           type="button"
-          onClick={handleDoNow}
+          onClick={handleApply}
           className={[
             "w-full rounded-2xl px-4 py-4 text-sm sm:text-base font-semibold",
             "bg-gray-900 text-white hover:bg-gray-800 active:bg-gray-950",
             "focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2",
           ].join(" ")}
         >
-          {move.ctaLabel}
+          今日の方針にする
         </button>
 
-        {didAckDo && (
+        {applied && (
           <div
             className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950 leading-relaxed"
             role="status"
             aria-live="polite"
           >
-            了解です。下のメモに一行だけ残して「記録する」と、今日の整理が残ります（+10pt）。
+            今日の方針として反映しました。
           </div>
         )}
 

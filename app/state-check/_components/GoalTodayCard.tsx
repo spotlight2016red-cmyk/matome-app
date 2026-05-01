@@ -50,6 +50,7 @@ export function GoalTodayCard({
   const [manualTitle, setManualTitle] = React.useState("");
   const [busyId, setBusyId] = React.useState<string | null>(null);
   const [adding, setAdding] = React.useState(false);
+  const [afterCompleteActionId, setAfterCompleteActionId] = React.useState<string | null>(null);
 
   const pending = React.useMemo(
     () => actions.filter((a) => a.status === "pending"),
@@ -71,6 +72,9 @@ export function GoalTodayCard({
         const res = await onPatch(actionId, body);
         if (res && typeof res.points_delta === "number" && res.points_delta > 0) {
           onPoints?.({ delta: res.points_delta, points: res.points });
+        }
+        if (body.status === "completed") {
+          setAfterCompleteActionId(actionId);
         }
         await onRefresh();
       } finally {
@@ -252,11 +256,7 @@ export function GoalTodayCard({
               key={a.id}
               action={a}
               busy={busyId === a.id}
-              onComplete={() =>
-                void runPatch(a.id, { status: "completed" }).then(() =>
-                  scrollToInsight()
-                )
-              }
+              onComplete={() => void runPatch(a.id, { status: "completed" })}
               onSkip={() => void runPatch(a.id, { status: "skipped" })}
             />
           ))}
@@ -271,6 +271,11 @@ export function GoalTodayCard({
               key={a.id}
               action={a}
               busy={busyId === a.id}
+              showAfterComplete={afterCompleteActionId === a.id}
+              onAfterCompleteChoice={(choice) => {
+                if (choice === "memo") scrollToInsight();
+                setAfterCompleteActionId(null);
+              }}
               onSaveNote={(note) => runPatch(a.id, { completion_note: note })}
             />
           ))}
@@ -348,10 +353,14 @@ function TodayActionRow({
 function CompletedRow({
   action,
   busy,
+  showAfterComplete,
+  onAfterCompleteChoice,
   onSaveNote,
 }: {
   action: GoalTodayActionRow;
   busy: boolean;
+  showAfterComplete: boolean;
+  onAfterCompleteChoice: (choice: "memo" | "skip") => void;
   onSaveNote: (note: string | null) => void | Promise<void>;
 }) {
   const [local, setLocal] = React.useState(action.completion_note ?? "");
@@ -362,6 +371,33 @@ function CompletedRow({
   return (
     <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 px-4 py-3 space-y-2">
       <div className="text-sm font-semibold text-gray-900">{action.title}</div>
+      {showAfterComplete && (
+        <div
+          className="rounded-xl border border-emerald-200 bg-white/80 px-3 py-3 text-sm text-emerald-950 space-y-2"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="font-semibold">できた！</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onAfterCompleteChoice("memo")}
+              className="rounded-xl bg-gray-900 text-white px-4 py-3 text-sm font-semibold hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-300"
+            >
+              ひとこと記録する（+10pt）
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onAfterCompleteChoice("skip")}
+              className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
+            >
+              今はしない
+            </button>
+          </div>
+        </div>
+      )}
       <label className="block text-xs text-gray-600">気づき・メモ（任意）</label>
       <textarea
         value={local}

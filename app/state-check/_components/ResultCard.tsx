@@ -99,7 +99,6 @@ export function ResultCard({
       <div className="space-y-5">
         <NextMoveCard
           move={move}
-          onCommitToNextStep={onCommitToNextStep}
           onSuggestAlternative={() => {
             setExcludedMoveIds((prev) => (prev.includes(move.id) ? prev : [...prev, move.id]));
           }}
