@@ -18,10 +18,16 @@ import { getConfirmedAuthStatus } from "@/app/lib/confirmedSession";
 import { AvatarGrowthCard } from "@/app/components/AvatarGrowthCard";
 import { avatarDiagnosisRedoHref } from "@/app/lib/avatarDiagnosis";
 import { normalizeAvatarType, type AvatarType } from "@/app/lib/avatarImage";
+import type {
+  GoalStepRow,
+  GoalTodayActionRow,
+  GoalTodayActionOrigin,
+} from "../_server/types";
 
 const POINT_RULES: readonly { label: string; points: number }[] = [
   { label: "診断を完了（結果を見る・1日1回）", points: 1 },
   { label: "診断を記録", points: 10 },
+  { label: "今日の1歩を完了（1歩につき初回）", points: 3 },
 ];
 
 function saveErrorMessage(e: unknown): string {
@@ -62,8 +68,13 @@ export function StateCheckClient() {
   const [authed, setAuthed] = React.useState<boolean | null>(null);
   const [history, setHistory] = React.useState<DiagnosisRunSummary[]>([]);
   const [smallGoal, setSmallGoal] = React.useState<string | null>(null);
+  const [goalMapId, setGoalMapId] = React.useState<string | null>(null);
+  const [goalSteps, setGoalSteps] = React.useState<GoalStepRow[]>([]);
+  const [todayActions, setTodayActions] = React.useState<GoalTodayActionRow[]>(
+    []
+  );
+  const [todayPackLoading, setTodayPackLoading] = React.useState(false);
   const dayKey = React.useMemo(() => todayDayKeyJST(), []);
-  const [todayProgress, setTodayProgress] = React.useState<number | null>(null);
   const [serverPoints, setServerPoints] = React.useState<number | null>(null);
   const [avatarType, setAvatarType] = React.useState<AvatarType | null>(null);
   const [ptGain, setPtGain] = React.useState<
@@ -127,26 +138,66 @@ export function StateCheckClient() {
 
   const nextMove = React.useMemo(() => {
     if (!computation) return null;
-    return chooseNextMove(computation, {
-      goal: { smallGoal, todayProgress },
-    });
-  }, [computation, smallGoal, todayProgress]);
+    return chooseNextMove(computation);
+  }, [computation]);
 
   const refreshGoal = React.useCallback(async () => {
     const res = await fetch("/api/goals", { method: "GET" });
     if (res.status === 401) {
       setSmallGoal(null);
+      setGoalMapId(null);
+      setGoalSteps([]);
       return;
     }
     const json = (await res.json()) as any;
     if (!json?.ok) {
       setSmallGoal(null);
+      setGoalMapId(null);
+      setGoalSteps([]);
       return;
     }
-    const first = (json.goals?.[0] ?? null) as any;
+    const first = (json.goals?.[0] ?? null) as { id?: string; small_goal?: string } | null;
     const sg = typeof first?.small_goal === "string" ? first.small_goal.trim() : "";
     setSmallGoal(sg || null);
+    setGoalMapId(typeof first?.id === "string" ? first.id : null);
+    setGoalSteps(Array.isArray(json.steps) ? (json.steps as GoalStepRow[]) : []);
   }, [router]);
+
+  const refreshTodayPack = React.useCallback(async () => {
+    setTodayPackLoading(true);
+    try {
+      const res = await fetch(
+        `/api/goals/today?day_key=${encodeURIComponent(dayKey)}`,
+        { method: "GET" }
+      );
+      if (res.status === 401) {
+        setTodayActions([]);
+        return;
+      }
+      const json = (await res.json()) as {
+        ok?: boolean;
+        actions?: GoalTodayActionRow[];
+        steps?: GoalStepRow[];
+        goal?: { small_goal?: string; id?: string } | null;
+      };
+      if (!json?.ok) {
+        setTodayActions([]);
+        return;
+      }
+      setTodayActions(Array.isArray(json.actions) ? json.actions : []);
+      if (Array.isArray(json.steps) && json.steps.length > 0) {
+        setGoalSteps(json.steps as GoalStepRow[]);
+      }
+      const g = json.goal;
+      if (g && typeof g.small_goal === "string") {
+        const t = g.small_goal.trim();
+        setSmallGoal(t || null);
+      }
+      if (g && typeof g.id === "string") setGoalMapId(g.id);
+    } finally {
+      setTodayPackLoading(false);
+    }
+  }, [dayKey]);
 
   const refreshHistory = React.useCallback(async () => {
     const res = await fetch("/api/diagnosis", { method: "GET" });
@@ -218,6 +269,7 @@ export function StateCheckClient() {
           void refreshHistory();
           void refreshTrends();
           void refreshGoal();
+          void refreshTodayPack();
           void refreshPoints();
           await refreshProfile();
           if (mounted) setProfileFetchDone(true);
@@ -225,6 +277,9 @@ export function StateCheckClient() {
           setHistory([]);
           setTrendState({ recentTendencies: [], recoveryStyles: [] });
           setSmallGoal(null);
+          setGoalMapId(null);
+          setGoalSteps([]);
+          setTodayActions([]);
           setServerPoints(null);
           setAvatarType(null);
           setProfileFetchDone(true);
@@ -235,6 +290,9 @@ export function StateCheckClient() {
         setHistory([]);
         setTrendState({ recentTendencies: [], recoveryStyles: [] });
         setSmallGoal(null);
+        setGoalMapId(null);
+        setGoalSteps([]);
+        setTodayActions([]);
         setServerPoints(null);
         setAvatarType(null);
         setProfileFetchDone(true);
@@ -243,87 +301,66 @@ export function StateCheckClient() {
     return () => {
       mounted = false;
     };
-  }, [refreshGoal, refreshHistory, refreshPoints, refreshProfile, refreshTrends]);
+  }, [refreshGoal, refreshHistory, refreshPoints, refreshProfile, refreshTodayPack, refreshTrends]);
 
   React.useEffect(() => {
-    if (typeof window === "undefined") return;
-    const raw = window.localStorage.getItem(`goalProgress:v1:${dayKey}`);
-    if (!raw) {
-      setTodayProgress(0);
-      return;
-    }
-    try {
-      const parsed = JSON.parse(raw) as any;
-      if (parsed?.version === 1 && parsed?.dayKey === dayKey) {
-        const p = Number(parsed.progress ?? 0);
-        const clamped = Math.max(0, Math.min(100, Math.round(p)));
-        setTodayProgress(clamped);
-        return;
-      }
-    } catch {
-      // ignore
-    }
-    setTodayProgress(0);
-  }, [dayKey]);
+    if (mode !== "result" || authed !== true) return;
+    void refreshTodayPack();
+  }, [mode, authed, refreshTodayPack]);
 
-  const setGoalProgressLocal = React.useCallback(
-    (next: number) => {
-      const p = Math.max(0, Math.min(100, Math.round(Number(next) || 0)));
-      setTodayProgress(p);
-      if (typeof window === "undefined") return;
-      const payload = {
-        version: 1,
-        dayKey,
-        progress: p,
-        updatedAt: new Date().toISOString(),
-      };
-      window.localStorage.setItem(`goalProgress:v1:${dayKey}`, JSON.stringify(payload));
+  const addTodayStep = React.useCallback(
+    async (input: {
+      title: string;
+      origin: GoalTodayActionOrigin;
+      linked_step_id?: string | null;
+    }) => {
+      const res = await fetch("/api/goals/today", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          day_key: dayKey,
+          goal_map_id: goalMapId ?? undefined,
+          title: input.title,
+          origin: input.origin,
+          linked_step_id: input.linked_step_id ?? null,
+        }),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (res.status === 401) throw new Error("ログインが必要です");
+      if (!json?.ok) throw new Error(json?.error ?? "追加に失敗しました");
     },
-    [dayKey]
+    [dayKey, goalMapId]
   );
 
-  const completeSmallGoal = React.useCallback(
-    async (smallGoalName: string) => {
-      if (authed !== true) {
-        return { ok: false as const, message: "ログインすると完了として記録できます。" };
+  const patchTodayStep = React.useCallback(
+    async (
+      actionId: string,
+      body: {
+        status?: "pending" | "completed" | "skipped";
+        completion_note?: string | null;
       }
-      try {
-        const res = await fetch("/api/state-check/complete-small-goal", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ small_goal: smallGoalName }),
-        });
-        if (res.status === 401) {
-          return { ok: false as const, message: "ログインが必要です。" };
-        }
-        const json = (await res.json()) as any;
-        if (!json?.ok) {
-          return { ok: false as const, message: json?.error ?? "完了に失敗しました" };
-        }
-
-        // 完了扱い: 今日の進捗を 100% にする（NextMove の「小ゴールを進める」を消す）
-        setGoalProgressLocal(100);
-
-        if (typeof json.points === "number") setServerPoints(Number(json.points));
-        const awarded = Boolean(json.awarded);
-        const pointsDelta = Number(json.points_delta ?? 0);
-        if (awarded && Number.isFinite(pointsDelta) && pointsDelta > 0) {
-          setPtGain({ delta: Math.floor(pointsDelta), key: String(Date.now()) });
-          window.setTimeout(() => setPtGain(null), 1300);
-        }
-        return {
-          ok: true as const,
-          awarded,
-          pointsDelta: Number.isFinite(pointsDelta) ? Math.floor(pointsDelta) : 0,
-        };
-      } catch (e) {
-        return {
-          ok: false as const,
-          message: e instanceof Error ? e.message : "完了に失敗しました",
-        };
-      }
+    ): Promise<{ points_delta?: number; points?: number }> => {
+      const res = await fetch(`/api/goals/today/${actionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const json = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        points?: number;
+        points_delta?: number;
+      };
+      if (res.status === 401) throw new Error("ログインが必要です");
+      if (!json?.ok) throw new Error(json?.error ?? "更新に失敗しました");
+      if (typeof json.points === "number") setServerPoints(json.points);
+      return {
+        points_delta: Number(json.points_delta ?? 0) || undefined,
+        points:
+          typeof json.points === "number" ? Number(json.points) : undefined,
+      };
     },
-    [authed, setGoalProgressLocal]
+    []
   );
 
   const handlePick = React.useCallback(
@@ -448,11 +485,7 @@ export function StateCheckClient() {
         tomorrowStep: computation.result.nextStep,
       });
 
-      const move =
-        nextMove ??
-        chooseNextMove(computation, {
-          goal: { smallGoal, todayProgress },
-        });
+      const move = nextMove ?? chooseNextMove(computation);
       const payload = {
         run_kind: runKind,
         result_type: computation.result.name,
@@ -635,12 +668,12 @@ export function StateCheckClient() {
             className={[
               "inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-semibold",
               "focus:outline-none focus:ring-2 focus:ring-gray-300",
-              smallGoal?.trim()
+              goalMapId && smallGoal?.trim()
                 ? "border border-gray-200 bg-white text-gray-900 shadow-sm hover:bg-gray-50"
                 : "bg-gray-900 text-white shadow-md hover:bg-gray-800",
             ].join(" ")}
           >
-            {smallGoal?.trim() ? "ゴールを確認" : "まず小ゴールを決める"}
+            {goalMapId && smallGoal?.trim() ? "ゴールを確認" : "ゴールを作る"}
           </Link>
         </div>
         {ptGain &&
@@ -801,10 +834,23 @@ export function StateCheckClient() {
             )}
             <ResultCard
               computation={computation}
-              goal={{ smallGoal, todayProgress }}
+              authed={authed === true}
+              smallGoalTitle={smallGoal}
+              todaySteps={goalSteps}
+              todayActions={todayActions}
+              todayPackLoading={todayPackLoading}
               onReset={handleReset}
               onCommitToNextStep={scrollToInsight}
-            onCompleteSmallGoal={completeSmallGoal}
+              onRefreshTodayPack={refreshTodayPack}
+              onAddTodayStep={addTodayStep}
+              onPatchTodayStep={patchTodayStep}
+              onTodayPoints={({ delta, points }) => {
+                if (typeof points === "number") setServerPoints(points);
+                if (delta > 0) {
+                  setPtGain({ delta, key: String(Date.now()) });
+                  window.setTimeout(() => setPtGain(null), 1300);
+                }
+              }}
             />
           </div>
 

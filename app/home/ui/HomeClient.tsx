@@ -24,28 +24,12 @@ export function HomeClient() {
   const [avatarType, setAvatarType] = React.useState<AvatarType | null>(null);
   const [gain, setGain] = React.useState<number | null>(null);
   const [smallGoal, setSmallGoal] = React.useState<string | null>(null);
-  const [todayProgress, setTodayProgress] = React.useState<number | null>(null);
+  const [todayPendingTitle, setTodayPendingTitle] = React.useState<
+    string | null
+  >(null);
+  const [hasCompletedTodayStep, setHasCompletedTodayStep] =
+    React.useState(false);
   const dayKey = React.useMemo(() => todayDayKeyJST(), []);
-
-  const readGoalProgressClamped = React.useCallback((dk: string): number => {
-    if (typeof window === "undefined") return 0;
-    const raw = window.localStorage.getItem(`goalProgress:v1:${dk}`);
-    if (!raw) return 0;
-    try {
-      const parsed = JSON.parse(raw) as {
-        version?: number;
-        dayKey?: string;
-        progress?: number;
-      };
-      if (parsed?.version === 1 && parsed?.dayKey === dk) {
-        const p = Number(parsed.progress ?? 0);
-        return Math.max(0, Math.min(100, Math.round(p)));
-      }
-    } catch {
-      // ignore
-    }
-    return 0;
-  }, []);
   /** 初回フェッチ完了。未確定の間は AvatarGrowthCard を出さない（explorer フォールバックの誤解を防ぐ） */
   const [homeBootstrapDone, setHomeBootstrapDone] = React.useState(false);
   /** プロフィール API が失敗（診断未実施とは別。ここで診断へ飛ばすと診断直後の再送になりやすい） */
@@ -99,14 +83,23 @@ export function HomeClient() {
           profileJson = json;
           if (res.ok && json?.ok) break;
         }
-        const [runsRes, pointsRes, goalsRes] = await Promise.all([
+        const [runsRes, pointsRes, goalsRes, todayRes] = await Promise.all([
           fetch("/api/diagnosis", { method: "GET" }),
           fetch("/api/points", { method: "GET" }),
           fetch("/api/goals", { method: "GET" }),
+          fetch(
+            `/api/goals/today?day_key=${encodeURIComponent(dayKey)}`,
+            { method: "GET" }
+          ),
         ]);
         const runsJson = (await runsRes.json()) as any;
         const pointsJson = (await pointsRes.json()) as any;
         const goalsJson = (await goalsRes.json()) as any;
+        const todayJson = (await todayRes.json()) as {
+          ok?: boolean;
+          pending_first_title?: string | null;
+          has_completed_today?: boolean;
+        };
         if (!mounted) return;
         if (runsJson?.ok) setHistory(runsJson.runs ?? []);
         if (pointsJson?.ok && typeof pointsJson.points === "number") {
@@ -160,6 +153,15 @@ export function HomeClient() {
         } else {
           setSmallGoal(null);
         }
+        if (todayJson?.ok) {
+          const p = todayJson.pending_first_title;
+          const t = typeof p === "string" ? p.trim() : "";
+          setTodayPendingTitle(t || null);
+          setHasCompletedTodayStep(Boolean(todayJson.has_completed_today));
+        } else {
+          setTodayPendingTitle(null);
+          setHasCompletedTodayStep(false);
+        }
       } catch (e) {
         if (!mounted) return;
         // ログイン済みのままフェッチだけ失敗したケースを、誤ってログアウト表示にしない
@@ -179,34 +181,7 @@ export function HomeClient() {
     return () => {
       mounted = false;
     };
-  }, []);
-
-  React.useLayoutEffect(() => {
-    setTodayProgress(readGoalProgressClamped(dayKey));
-  }, [dayKey, readGoalProgressClamped]);
-
-  React.useEffect(() => {
-    if (typeof window === "undefined") return;
-    const sync = () => setTodayProgress(readGoalProgressClamped(dayKey));
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === `goalProgress:v1:${dayKey}`) sync();
-    };
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") sync();
-    };
-    const onPageShow = (e: Event) => {
-      const pe = e as PageTransitionEvent;
-      if (pe.persisted) sync();
-    };
-    window.addEventListener("storage", onStorage);
-    document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("pageshow", onPageShow);
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("pageshow", onPageShow);
-    };
-  }, [dayKey, readGoalProgressClamped]);
+  }, [dayKey, router]);
 
   React.useEffect(() => {
     const raw = searchParams.get("gained");
@@ -238,16 +213,18 @@ export function HomeClient() {
   );
 
   const todayMove = React.useMemo(() => {
+    const pending = (todayPendingTitle ?? "").trim();
+    if (pending) return pending;
     const sg = (smallGoal ?? "").trim();
-    const prog = typeof todayProgress === "number" ? todayProgress : 0;
-    if (sg && prog < 100) return `小ゴールを進める：${sg}`;
-    return "状態チェックで、次の一手を出す";
-  }, [smallGoal, todayProgress]);
+    if (sg) {
+      return `小ゴール「${sg}」の今日の1歩を、診断またはゴール画面で追加しましょう`;
+    }
+    return "ゴールを決めて、今日の1歩を足していきましょう";
+  }, [smallGoal, todayPendingTitle]);
 
   const goalDoneToday = React.useMemo(() => {
-    const sg = (smallGoal ?? "").trim();
-    return Boolean(sg) && typeof todayProgress === "number" && todayProgress >= 100;
-  }, [smallGoal, todayProgress]);
+    return Boolean(hasCompletedTodayStep);
+  }, [hasCompletedTodayStep]);
 
   return (
     <div className="mb-6">
@@ -313,7 +290,7 @@ export function HomeClient() {
             nextLevelAt={nextLevelAt}
           />
 
-          {goalDoneToday && smallGoal?.trim() ? (
+          {goalDoneToday ? (
             <section
               className="rounded-3xl border-2 border-emerald-300 bg-gradient-to-b from-emerald-50/90 to-white shadow-sm backdrop-blur px-6 py-6"
               aria-live="polite"
@@ -326,15 +303,16 @@ export function HomeClient() {
                   ✓
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs font-semibold text-emerald-800">今日の小ゴール・達成</div>
-                  <p className="mt-1 text-lg sm:text-xl font-semibold text-gray-900 leading-snug">
-                    「{smallGoal.trim()}」
-                  </p>
+                  <div className="text-xs font-semibold text-emerald-800">
+                    今日の1歩・完了
+                  </div>
+                  {smallGoal?.trim() ? (
+                    <p className="mt-1 text-lg sm:text-xl font-semibold text-gray-900 leading-snug">
+                      小ゴール「{smallGoal.trim()}」
+                    </p>
+                  ) : null}
                   <p className="mt-2 text-sm text-emerald-900/90 leading-relaxed">
-                    今日のノルマはここまで。次は状態チェックで整えましょう（下の「いまやる」）。
-                  </p>
-                  <p className="mt-2 text-xs text-gray-600">
-                    明日以降また進めたいときは、ゴール整理で進捗を戻すか、新しい小ゴールに更新できます。
+                    今日セットした「1歩」のうち、少なくとも1つを完了しました。次は状態チェックで整えましょう（下の「いまやる」）。
                   </p>
                 </div>
               </div>
@@ -349,9 +327,7 @@ export function HomeClient() {
                 : "border-gray-200",
             ].join(" ")}
           >
-            <div className="text-xs text-gray-500 mb-2">
-              {goalDoneToday ? "次の一手（今日はここから）" : "今日の一手（1つだけ）"}
-            </div>
+            <div className="text-xs text-gray-500 mb-2">今日の1歩</div>
             <div className="text-xl sm:text-2xl font-semibold text-gray-900 mb-4">
               {todayMove}
             </div>
@@ -366,7 +342,7 @@ export function HomeClient() {
                 href="/state-check/goals"
                 className="inline-flex w-full sm:w-auto items-center justify-center rounded-2xl border border-gray-200 bg-white px-5 py-4 text-sm sm:text-base font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
               >
-                ゴールを確認
+                {smallGoal?.trim() ? "ゴールを確認" : "ゴールを作る"}
               </Link>
               <Link
                 href={avatarDiagnosisRedoHref("/home")}

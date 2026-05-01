@@ -46,10 +46,45 @@ export type GoalMapInsert = {
   middle_goal_purpose?: string | null;
   small_goal_purpose?: string | null;
   success_criteria?: string | null;
+  big_goal_due_on?: string | null;
+  middle_goal_due_on?: string | null;
+  small_goal_due_on?: string | null;
 };
 
 export type GoalMapRow = GoalMapInsert & {
   id: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type GoalStepKind = "fixed" | "variable";
+
+export type GoalStepRow = {
+  id: string;
+  goal_map_id: string;
+  step_kind: GoalStepKind;
+  title: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type GoalTodayActionOrigin = "fixed_pick" | "variable_pick" | "diagnosis" | "manual";
+
+export type GoalTodayActionStatus = "pending" | "completed" | "skipped";
+
+export type GoalTodayActionRow = {
+  id: string;
+  user_id: string;
+  goal_map_id: string;
+  day_key: string;
+  title: string;
+  origin: GoalTodayActionOrigin;
+  linked_step_id: string | null;
+  status: GoalTodayActionStatus;
+  completed_at: string | null;
+  /** DB カラム（`2026-05-10_goal_today_completion_note.sql` 適用後） */
+  completion_note?: string | null;
   created_at: string;
   updated_at: string;
 };

@@ -3,6 +3,12 @@
 import * as React from "react";
 import type { StateCheckComputation } from "../_lib/logic";
 import { chooseNextMove } from "../_lib/nextMove";
+import type {
+  GoalTodayActionRow,
+  GoalTodayActionOrigin,
+  GoalStepRow,
+} from "../_server/types";
+import { GoalTodayCard } from "./GoalTodayCard";
 import { NextMoveCard } from "./NextMoveCard";
 
 function Badge({ children }: { children: React.ReactNode }) {
@@ -15,20 +21,41 @@ function Badge({ children }: { children: React.ReactNode }) {
 
 export function ResultCard({
   computation,
-  goal,
+  authed,
+  smallGoalTitle,
+  todaySteps,
+  todayActions,
+  todayPackLoading,
   onReset,
   onCommitToNextStep,
-  onCompleteSmallGoal,
+  onRefreshTodayPack,
+  onAddTodayStep,
+  onPatchTodayStep,
+  onTodayPoints,
 }: {
   computation: StateCheckComputation;
-  goal?: { smallGoal?: string | null; todayProgress?: number | null };
+  authed: boolean;
+  smallGoalTitle: string | null;
+  todaySteps: GoalStepRow[];
+  todayActions: GoalTodayActionRow[];
+  todayPackLoading?: boolean;
   onReset: () => void;
   /** 「いま〜する」押下後: メモ欄へ誘導するなど */
   onCommitToNextStep?: () => void;
-  onCompleteSmallGoal?: (smallGoalName: string) => Promise<
-    | { ok: true; awarded: boolean; pointsDelta: number }
-    | { ok: false; message: string }
-  >;
+  onRefreshTodayPack: () => Promise<void>;
+  onAddTodayStep: (input: {
+    title: string;
+    origin: GoalTodayActionOrigin;
+    linked_step_id?: string | null;
+  }) => Promise<void>;
+  onPatchTodayStep: (
+    actionId: string,
+    body: {
+      status?: "pending" | "completed" | "skipped";
+      completion_note?: string | null;
+    }
+  ) => Promise<{ points_delta?: number; points?: number } | void>;
+  onTodayPoints?: (payload: { delta: number; points?: number }) => void;
 }) {
   const { result, scores, heatMode } = computation;
   const [excludedMoveIds, setExcludedMoveIds] = React.useState<string[]>([]);
@@ -38,8 +65,17 @@ export function ResultCard({
   }, [computation.debug?.chosenId]);
 
   const move = React.useMemo(
-    () => chooseNextMove(computation, { excludedMoveIds, goal }),
-    [computation, excludedMoveIds, goal]
+    () => chooseNextMove(computation, { excludedMoveIds }),
+    [computation, excludedMoveIds]
+  );
+
+  const fixedSteps = React.useMemo(
+    () => todaySteps.filter((s) => s.step_kind === "fixed"),
+    [todaySteps]
+  );
+  const variableSteps = React.useMemo(
+    () => todaySteps.filter((s) => s.step_kind === "variable"),
+    [todaySteps]
   );
 
   return (
@@ -64,10 +100,24 @@ export function ResultCard({
         <NextMoveCard
           move={move}
           onCommitToNextStep={onCommitToNextStep}
-          onCompleteSmallGoal={onCompleteSmallGoal}
           onSuggestAlternative={() => {
             setExcludedMoveIds((prev) => (prev.includes(move.id) ? prev : [...prev, move.id]));
           }}
+        />
+
+        <GoalTodayCard
+          authed={authed}
+          smallGoalTitle={smallGoalTitle}
+          fixedSteps={fixedSteps}
+          variableSteps={variableSteps}
+          actions={todayActions}
+          diagnosisSuggestion={result.nextStep}
+          loading={todayPackLoading}
+          scrollToInsight={() => onCommitToNextStep?.()}
+          onRefresh={onRefreshTodayPack}
+          onAdd={onAddTodayStep}
+          onPatch={onPatchTodayStep}
+          onPoints={onTodayPoints}
         />
 
         <div className="rounded-xl bg-gray-50 border border-gray-200 px-4 py-4">

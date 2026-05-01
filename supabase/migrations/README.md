@@ -9,8 +9,10 @@
   - `user_profiles` に `authenticated` の GRANT を付与（`permission denied for table user_profiles` 対策）。
 - `2026-05-07_state_check_daily_view_bonus.sql`
   - 診断完了 +1pt 用。未適用だと `/api/state-check/view-bonus` が失敗しうる（アプリ側は未設定時に穏やく案内するが、本番では適用推奨）。
-- `2026-05-08_state_check_small_goal_completion.sql`
-  - 小ゴール「完了」ボタンの +pt（重複付与防止ログ）。`POST /api/state-check/complete-small-goal` と併用。
+- `2026-05-09_agari_goal_steps_and_today.sql`
+  - AGARI ゴール：大・中・小の任意期日、`goal_steps`（固定／変動の1歩プール）、`goal_today_actions`（今日の1歩）とポイント用 `goal_today_action_point_awards`。
+- `2026-05-10_goal_today_completion_note.sql`
+  - `goal_today_actions.completion_note`（完了後の任意メモ）。
 
 ### ポイント（状態チェック）
 - 上記「最低限」の `2026-05-07_state_check_daily_view_bonus.sql`：`POST /api/state-check/view-bonus` と併用（同一ユーザー・同一日に +1pt を1回）。
