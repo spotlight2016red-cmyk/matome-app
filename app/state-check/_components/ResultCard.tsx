@@ -47,7 +47,7 @@ export function ResultCard({
     title: string;
     origin: GoalTodayActionOrigin;
     linked_step_id?: string | null;
-  }) => Promise<void>;
+  }) => Promise<{ id: string }>;
   onPatchTodayStep: (
     actionId: string,
     body: {

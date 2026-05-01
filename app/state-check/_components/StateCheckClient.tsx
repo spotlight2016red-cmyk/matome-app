@@ -325,9 +325,16 @@ export function StateCheckClient() {
           linked_step_id: input.linked_step_id ?? null,
         }),
       });
-      const json = (await res.json()) as { ok?: boolean; error?: string };
+      const json = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        action?: { id?: string };
+      };
       if (res.status === 401) throw new Error("ログインが必要です");
       if (!json?.ok) throw new Error(json?.error ?? "追加に失敗しました");
+      const id = typeof json.action?.id === "string" ? json.action.id : null;
+      if (!id) throw new Error("追加結果の取得に失敗しました");
+      return { id };
     },
     [dayKey, goalMapId]
   );

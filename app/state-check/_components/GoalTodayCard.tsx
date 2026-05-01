@@ -40,7 +40,7 @@ export function GoalTodayCard({
     title: string;
     origin: GoalTodayActionOrigin;
     linked_step_id?: string | null;
-  }) => Promise<void>;
+  }) => Promise<{ id: string }>;
   onPatch: (
     actionId: string,
     body: PatchBody
@@ -51,9 +51,17 @@ export function GoalTodayCard({
   const [busyId, setBusyId] = React.useState<string | null>(null);
   const [adding, setAdding] = React.useState(false);
   const [afterCompleteActionId, setAfterCompleteActionId] = React.useState<string | null>(null);
+  const [selectedPendingId, setSelectedPendingId] = React.useState<string | null>(null);
 
-  const pending = React.useMemo(
-    () => actions.filter((a) => a.status === "pending"),
+  const pendingSorted = React.useMemo(
+    () =>
+      actions
+        .filter((a) => a.status === "pending")
+        .slice()
+        .sort(
+          (a, b) =>
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        ),
     [actions]
   );
   const completed = React.useMemo(
@@ -76,12 +84,15 @@ export function GoalTodayCard({
         if (body.status === "completed") {
           setAfterCompleteActionId(actionId);
         }
+        if (body.status === "skipped" && selectedPendingId === actionId) {
+          setSelectedPendingId(null);
+        }
         await onRefresh();
       } finally {
         setBusyId(null);
       }
     },
-    [onPatch, onPoints, onRefresh]
+    [onPatch, onPoints, onRefresh, selectedPendingId]
   );
 
   const runAdd = React.useCallback(
@@ -92,15 +103,27 @@ export function GoalTodayCard({
     }) => {
       setAdding(true);
       try {
-        await onAdd(input);
-        setManualTitle("");
-        await onRefresh();
+        return await onAdd(input);
       } finally {
         setAdding(false);
       }
     },
     [onAdd, onRefresh]
   );
+
+  React.useEffect(() => {
+    if (pendingSorted.length === 0) {
+      setSelectedPendingId(null);
+      return;
+    }
+    setSelectedPendingId((prev) => {
+      const stillPending = pendingSorted.some((p) => p.id === prev);
+      if (prev && stillPending) return prev;
+      // 保留中が複数ある場合は選び直させる（自動で先頭だけにフォーカスすると「複数の完了」が出る）
+      if (pendingSorted.length > 1) return null;
+      return pendingSorted[0]?.id ?? null;
+    });
+  }, [pendingSorted]);
 
   if (!authed) {
     return (
@@ -122,7 +145,7 @@ export function GoalTodayCard({
   if (!smallGoalTitle?.trim()) {
     return (
       <section className="rounded-2xl border border-dashed border-gray-300 bg-white px-6 py-6">
-        <div className="text-xs text-gray-500 mb-1">今日の1歩</div>
+        <div className="text-xs text-gray-500 mb-1">今日の1歩を選ぶ</div>
         <p className="text-sm text-gray-800 leading-relaxed">
           先にゴール（小ゴールまで）を決めると、その方向に対する<strong className="font-semibold">今日の1歩</strong>をここに並べられます。
         </p>
@@ -137,85 +160,125 @@ export function GoalTodayCard({
   }
 
   const sug = diagnosisSuggestion.trim();
+  const selectedPending =
+    pendingSorted.find((a) => a.id === selectedPendingId) ??
+    null;
+
+  const choose = async (input: {
+    title: string;
+    origin: GoalTodayActionOrigin;
+    linked_step_id?: string | null;
+  }) => {
+    const currentId = selectedPendingId;
+    if (currentId) await runPatch(currentId, { status: "skipped" });
+
+    let createdId: string;
+    try {
+      const created = await runAdd(input);
+      createdId = created.id;
+    } catch {
+      return;
+    }
+    await onRefresh();
+    setSelectedPendingId(createdId);
+  };
+
+  const candidates: Array<{
+    key: string;
+    title: string;
+    origin: GoalTodayActionOrigin;
+    linked_step_id?: string | null;
+    label?: string;
+  }> = [];
+  if (sug) {
+    candidates.push({
+      key: `diag:${sug}`,
+      title: sug,
+      origin: "diagnosis",
+      linked_step_id: null,
+      label: "診断の提案",
+    });
+  }
+  for (const s of fixedSteps) {
+    candidates.push({
+      key: `fixed:${s.id}`,
+      title: s.title,
+      origin: "fixed_pick",
+      linked_step_id: s.id,
+      label: "固定の1歩",
+    });
+  }
+  for (const s of variableSteps) {
+    candidates.push({
+      key: `var:${s.id}`,
+      title: s.title,
+      origin: "variable_pick",
+      linked_step_id: s.id,
+      label: "変動する1歩",
+    });
+  }
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-white shadow-sm px-6 py-6 space-y-5">
       <div>
-        <div className="text-xs text-gray-500 mb-1">今日の1歩</div>
+        <div className="text-xs text-gray-500 mb-1">今日の1歩を選ぶ</div>
         <p className="text-sm text-gray-800 leading-relaxed">
-          小ゴール<strong className="font-semibold">「{smallGoalTitle.trim()}」</strong>に向けて、今日やる小さな行動を並べます（複数OK）。
+          小ゴール<strong className="font-semibold">「{smallGoalTitle.trim()}」</strong>
+          に向けて、候補の中から<strong className="font-semibold">今日の1歩</strong>
+          を1つ選んでください。
         </p>
+        <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 leading-relaxed">
+          <div>この中から、今日やる1歩を1つ選んでください。</div>
+          <div className="text-gray-600">迷ったら、いちばん軽いものからでOKです。</div>
+        </div>
       </div>
 
-      {sug ? (
-        <div className="rounded-xl border border-sky-200 bg-sky-50/80 px-4 py-4 space-y-2">
-          <div className="text-xs font-semibold text-sky-900">診断の提案（参考）</div>
-          <p className="text-sm text-gray-900 leading-relaxed">{sug}</p>
-          <button
-            type="button"
-            disabled={adding || !sug}
-            onClick={() =>
-              void runAdd({ title: sug, origin: "diagnosis", linked_step_id: null })
-            }
-            className={[
-              "text-sm font-semibold underline underline-offset-2",
-              adding ? "text-gray-400 cursor-not-allowed" : "text-sky-900 hover:text-sky-950",
-            ].join(" ")}
-          >
-            今日の1歩に追加する
-          </button>
-        </div>
-      ) : null}
-
-      {fixedSteps.length > 0 && (
-        <div>
-          <div className="text-xs font-semibold text-gray-600 mb-2">固定の1歩（習慣）</div>
-          <div className="flex flex-wrap gap-2">
-            {fixedSteps.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                disabled={adding}
-                onClick={() =>
-                  void runAdd({
-                    title: s.title,
-                    origin: "fixed_pick",
-                    linked_step_id: s.id,
-                  })
-                }
-                className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-900 hover:bg-gray-100 disabled:opacity-50"
+      <div className="space-y-3">
+        {candidates.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-4 text-sm text-gray-700">
+            まず「ゴール・1歩のプールを編集」で候補を追加すると、ここから選べるようになります。
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {candidates.map((c) => (
+              <div
+                key={c.key}
+                className="rounded-xl border border-gray-200 bg-white px-4 py-3 flex items-start justify-between gap-3"
               >
-                {s.title}
-              </button>
+                <div className="min-w-0">
+                  {c.label ? (
+                    <div className="text-[11px] font-semibold text-gray-500 mb-1">
+                      {c.label}
+                    </div>
+                  ) : null}
+                  <div className="text-sm font-semibold text-gray-900 leading-relaxed break-words">
+                    {c.title}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={adding}
+                  onClick={() =>
+                    void choose({
+                      title: c.title,
+                      origin: c.origin,
+                      linked_step_id: c.linked_step_id ?? null,
+                    })
+                  }
+                  className={[
+                    "shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold",
+                    adding
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      : "bg-gray-900 text-white hover:bg-gray-800",
+                  ].join(" ")}
+                >
+                  {c.origin === "diagnosis" ? "これを選ぶ" : "選ぶ"}
+                </button>
+              </div>
             ))}
           </div>
-        </div>
-      )}
-
-      {variableSteps.length > 0 && (
-        <div>
-          <div className="text-xs font-semibold text-gray-600 mb-2">変動する1歩（プール）</div>
-          <div className="flex flex-wrap gap-2">
-            {variableSteps.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                disabled={adding}
-                onClick={() =>
-                  void runAdd({
-                    title: s.title,
-                    origin: "variable_pick",
-                    linked_step_id: s.id,
-                  })
-                }
-                className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-900 hover:bg-gray-50 disabled:opacity-50"
-              >
-                {s.title}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="space-y-2">
         <label className="block text-xs font-semibold text-gray-600">＋ 1歩を追加する</label>
@@ -230,11 +293,16 @@ export function GoalTodayCard({
             type="button"
             disabled={adding || !manualTitle.trim()}
             onClick={() =>
-              void runAdd({
-                title: manualTitle.trim(),
-                origin: "manual",
-                linked_step_id: null,
-              })
+              void (async () => {
+                const t = manualTitle.trim().slice(0, 240);
+                if (!t) return;
+                await choose({
+                  title: t,
+                  origin: "manual",
+                  linked_step_id: null,
+                });
+                setManualTitle("");
+              })()
             }
             className={[
               "rounded-xl px-4 py-3 text-sm font-semibold whitespace-nowrap",
@@ -246,22 +314,26 @@ export function GoalTodayCard({
             追加
           </button>
         </div>
+        <p className="text-[11px] text-gray-500 leading-relaxed">
+          「追加」を押すと、いま入力した内容が
+          <strong className="font-semibold"> 今日の1歩 </strong>
+          として「いま取り組む」にセットされます（必要なら下で選び直せます）。
+        </p>
       </div>
 
-      {pending.length > 0 && (
+      {selectedPending ? (
         <div className="space-y-3">
           <div className="text-xs font-semibold text-gray-600">いま取り組む</div>
-          {pending.map((a) => (
-            <TodayActionRow
-              key={a.id}
-              action={a}
-              busy={busyId === a.id}
-              onComplete={() => void runPatch(a.id, { status: "completed" })}
-              onSkip={() => void runPatch(a.id, { status: "skipped" })}
-            />
-          ))}
+          <TodayActionRow
+            key={selectedPending.id}
+            action={selectedPending}
+            busy={busyId === selectedPending.id}
+            onComplete={() => void runPatch(selectedPending.id, { status: "completed" })}
+            onSkip={() => void runPatch(selectedPending.id, { status: "skipped" })}
+            onReselect={() => void runPatch(selectedPending.id, { status: "skipped" })}
+          />
         </div>
-      )}
+      ) : null}
 
       {completed.length > 0 && (
         <div className="space-y-2">
@@ -312,11 +384,13 @@ function TodayActionRow({
   busy,
   onComplete,
   onSkip,
+  onReselect,
 }: {
   action: GoalTodayActionRow;
   busy: boolean;
   onComplete: () => void;
   onSkip: () => void;
+  onReselect?: () => void;
 }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-4 space-y-3">
@@ -346,6 +420,16 @@ function TodayActionRow({
           今日はできなかった
         </button>
       </div>
+      {onReselect && (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onReselect}
+          className="text-sm font-semibold text-gray-700 underline underline-offset-2 hover:text-gray-900"
+        >
+          選び直す
+        </button>
+      )}
     </div>
   );
 }
