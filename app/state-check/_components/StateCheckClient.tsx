@@ -352,7 +352,7 @@ export function StateCheckClient() {
       await refreshHistory();
       await refreshTrends();
       window.setTimeout(() => {
-        router.push(`/home?gained=${safeDelta}`);
+        window.location.assign(`/home?gained=${safeDelta}`);
       }, 900);
     } catch (e) {
       setSaveState({
@@ -464,13 +464,13 @@ export function StateCheckClient() {
           )}
         </div>
         <div className="mb-3 flex flex-wrap gap-2">
-          <Link
+          <a
             href="/home"
             title="成長のホーム（マイページ）"
             className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
           >
             ホームへ
-          </Link>
+          </a>
           <Link
             href={avatarDiagnosisRedoHref("/state-check")}
             className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
@@ -650,7 +650,7 @@ export function StateCheckClient() {
                   <span>記録しました +10pt（マイページに戻ります）</span>
                   <button
                     type="button"
-                    onClick={() => router.push("/home")}
+                    onClick={() => window.location.assign("/home")}
                     className="font-semibold underline underline-offset-2"
                   >
                     今すぐ戻る
