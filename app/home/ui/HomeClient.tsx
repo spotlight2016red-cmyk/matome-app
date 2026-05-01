@@ -53,21 +53,23 @@ export function HomeClient() {
         }
         setProfileFetchFailed(false);
         const optimisticAvatar = peekPendingAvatarType();
-        const [runsRes, pointsRes] = await Promise.all([
-          fetch("/api/diagnosis", { method: "GET" }),
-          fetch("/api/points", { method: "GET" }),
-        ]);
+        // プロフィールは他 API と同時だと失敗しやすいので先に取り、短いバックオフで複数回試す。
         let profileRes: Response | null = null;
         let profileJson: { ok?: boolean; avatarType?: string | null } | null = null;
-        for (let attempt = 0; attempt < 2; attempt++) {
+        const profileAttempts = 5;
+        for (let attempt = 0; attempt < profileAttempts; attempt++) {
+          if (attempt > 0) await new Promise((r) => setTimeout(r, 400));
           const res = await fetch("/api/profile", { method: "GET" });
           const json = (await res.json()) as { ok?: boolean; avatarType?: string | null };
           profileRes = res;
           profileJson = json;
           if (res.ok && json?.ok) break;
-          if (attempt === 0) await new Promise((r) => setTimeout(r, 400));
         }
-        const goalsRes = await fetch("/api/goals", { method: "GET" });
+        const [runsRes, pointsRes, goalsRes] = await Promise.all([
+          fetch("/api/diagnosis", { method: "GET" }),
+          fetch("/api/points", { method: "GET" }),
+          fetch("/api/goals", { method: "GET" }),
+        ]);
         const runsJson = (await runsRes.json()) as any;
         const pointsJson = (await pointsRes.json()) as any;
         const goalsJson = (await goalsRes.json()) as any;
@@ -161,13 +163,18 @@ export function HomeClient() {
     if (!Number.isFinite(n) || n <= 0) return;
     const delta = Math.floor(n);
     setGain(delta);
-    // Optimistic update so growth is felt immediately.
-    setServerPoints((prev) => (typeof prev === "number" ? prev + delta : prev));
+    // +pt は /api/points の GET で揃う。ここではトーストのみ（router.replace だと再マウントと初回フェッチが競合しやすい）。
     const t = window.setTimeout(() => setGain(null), 1400);
-    // Clean up URL to avoid showing again on refresh.
-    router.replace("/home");
+    if (typeof window !== "undefined") {
+      const u = new URL(window.location.href);
+      if (u.searchParams.has("gained")) {
+        u.searchParams.delete("gained");
+        const next = `${u.pathname}${u.search}${u.hash}`;
+        window.history.replaceState(window.history.state, "", next);
+      }
+    }
     return () => window.clearTimeout(t);
-  }, [router, searchParams]);
+  }, [searchParams]);
 
   const points = React.useMemo(() => {
     if (typeof serverPoints === "number") return serverPoints;
