@@ -66,7 +66,13 @@ export function StateCheckClient() {
   const [todayProgress, setTodayProgress] = React.useState<number | null>(null);
   const [serverPoints, setServerPoints] = React.useState<number | null>(null);
   const [avatarType, setAvatarType] = React.useState<AvatarType | null>(null);
-  const [ptGain, setPtGain] = React.useState<null | { delta: number; key: string }>(null);
+  const [ptGain, setPtGain] = React.useState<
+    null | { delta: number; key: string; caption?: string }
+  >(null);
+  /** 診断結果表示時の +1pt（API 確定後。結果エリアに常時表示） */
+  const [viewCompletionPt, setViewCompletionPt] = React.useState<
+    null | "awarded" | "already_today"
+  >(null);
   const [levelUp, setLevelUp] = React.useState<null | { toLevel: number; key: string }>(null);
   const [saveToast, setSaveToast] = React.useState<null | {
     kind: "saving" | "saved" | "error";
@@ -296,10 +302,19 @@ export function StateCheckClient() {
         if (!json?.ok || typeof json.points !== "number") return;
         setServerPoints(json.points);
         if (json.awarded) {
-          setPtGain({ delta: 1, key: String(Date.now()) });
+          setViewCompletionPt("awarded");
+          const linger = 5200;
+          setPtGain({
+            delta: 1,
+            key: String(Date.now()),
+            caption:
+              "質問に答えて診断結果まで進んだボーナスです（ログイン時・1日1回）。メモを記録すると別に +10pt。",
+          });
           window.setTimeout(() => {
             if (!cancelled) setPtGain(null);
-          }, 1300);
+          }, linger);
+        } else {
+          setViewCompletionPt("already_today");
         }
       } catch {
         // ignore（未ログイン・マイグレ未適用など）
@@ -316,6 +331,7 @@ export function StateCheckClient() {
     setMemo("");
     setRunKind("morning");
     setSaveState({ kind: "idle" });
+    setViewCompletionPt(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -540,36 +556,47 @@ export function StateCheckClient() {
             {smallGoal?.trim() ? "ゴールを確認" : "まず小ゴールを決める"}
           </Link>
         </div>
-        {ptGain && (
-          <div
-            key={ptGain.key}
-            className="mb-3 text-sm font-semibold text-emerald-900"
-          >
-            <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 animate-[fadeUp_1.2s_ease-out_forwards]">
-              +{ptGain.delta}pt
-            </span>
-            <style jsx>{`
-              @keyframes fadeUp {
-                0% {
-                  opacity: 0;
-                  transform: translateY(6px);
+        {ptGain &&
+          (ptGain.caption ? (
+            <div
+              key={ptGain.key}
+              className="mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950"
+              role="status"
+              aria-live="polite"
+            >
+              <div className="font-semibold">+{ptGain.delta}pt</div>
+              <p className="mt-1.5 text-xs leading-relaxed opacity-95">{ptGain.caption}</p>
+            </div>
+          ) : (
+            <div
+              key={ptGain.key}
+              className="mb-3 text-sm font-semibold text-emerald-900"
+            >
+              <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 animate-[fadeUp_1.2s_ease-out_forwards]">
+                +{ptGain.delta}pt
+              </span>
+              <style jsx>{`
+                @keyframes fadeUp {
+                  0% {
+                    opacity: 0;
+                    transform: translateY(6px);
+                  }
+                  15% {
+                    opacity: 1;
+                    transform: translateY(0);
+                  }
+                  85% {
+                    opacity: 1;
+                    transform: translateY(-2px);
+                  }
+                  100% {
+                    opacity: 0;
+                    transform: translateY(-6px);
+                  }
                 }
-                15% {
-                  opacity: 1;
-                  transform: translateY(0);
-                }
-                85% {
-                  opacity: 1;
-                  transform: translateY(-2px);
-                }
-                100% {
-                  opacity: 0;
-                  transform: translateY(-6px);
-                }
-              }
-            `}</style>
-          </div>
-        )}
+              `}</style>
+            </div>
+          ))}
         {levelUp && (
           <div key={levelUp.key} className="mb-3">
             <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900 animate-[pop_1.6s_ease-out_forwards]">
@@ -618,6 +645,10 @@ export function StateCheckClient() {
               {r.label}：+{r.points}pt
             </div>
           ))}
+          <p className="mt-2 text-[11px] text-gray-500 leading-relaxed">
+            「診断を完了」の +1pt は、<strong className="font-semibold text-gray-600">診断結果が表示されたとき</strong>
+            に自動で付きます（ログイン時・1日1回）。画面を下に進めると反映メッセージが出ます。
+          </p>
         </div>
         <p className="text-sm sm:text-base text-gray-700 leading-relaxed mb-3">
           いくつかの質問に答えるだけで、今どこにいて、このままだとどうなりやすいか、そして次に何を整えると良いかが分かります。
@@ -631,13 +662,31 @@ export function StateCheckClient() {
 
       {mode === "result" && computation ? (
         <div className="space-y-8">
-          <div id="state-check-diagnosis-result" className="scroll-mt-4">
-          <ResultCard
-            computation={computation}
-            goal={{ smallGoal, todayProgress }}
-            onReset={handleReset}
-            onCommitToNextStep={scrollToInsight}
-          />
+          <div id="state-check-diagnosis-result" className="scroll-mt-4 space-y-4">
+            {viewCompletionPt === "awarded" && (
+              <div
+                className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950 leading-relaxed"
+                role="status"
+                aria-live="polite"
+              >
+                <span className="font-semibold">+1pt</span>
+                を付けました（質問に答えて診断結果まで進んだ分・ログイン時・1日1回）。メモを「記録する」と
+                <span className="font-semibold"> さらに +10pt</span>（別ルール）です。
+              </div>
+            )}
+            {viewCompletionPt === "already_today" && (
+              <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 leading-relaxed">
+                今日の「診断を完了」<span className="font-semibold">+1pt</span>
+                はすでに付与済みです。メモを記録すると
+                <span className="font-semibold"> +10pt</span> が別に付きます。
+              </div>
+            )}
+            <ResultCard
+              computation={computation}
+              goal={{ smallGoal, todayProgress }}
+              onReset={handleReset}
+              onCommitToNextStep={scrollToInsight}
+            />
           </div>
 
           <section className="rounded-2xl border border-gray-200 bg-white shadow-sm px-6 py-6">
